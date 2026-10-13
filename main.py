@@ -22,7 +22,7 @@ title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 175)
 shadow_text = title_font.render("Pixel Pawn", True, (10, 10, 10))
 title_text = title_font.render("Pixel Pawn", True, (255, 255, 255))
 title_rect = title_text.get_rect(center = (720, 250))
-shadow_rect = shadow_text.get_rect(center = (720, 250))
+
 
 
 while running:
@@ -32,7 +32,7 @@ while running:
     
     if game_state == "title":
         window.fill((44, 44, 60))
-        window.blit(shadow_text, shadow_rect.move(12, 12))
+        window.blit(shadow_text, title_rect.move(12, 12))
         window.blit(title_text, title_rect)
         
 
