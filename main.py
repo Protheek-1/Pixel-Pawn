@@ -144,7 +144,6 @@ while running:
 
                 if game_state == "play" and hovered_tile is not None:
                     click_row, click_col = hovered_tile
-                    print(f'Clicked on grid cell: Row {hovered_tile[0]} Col {hovered_tile[1]}')
 
                     if selected_tile is None:
                         if board_layout[click_row][click_col] != "--":
