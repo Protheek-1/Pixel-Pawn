@@ -55,6 +55,32 @@ board_rect = board_surf.get_rect(topleft = (board_x, board_y))
 timer_surf = pygame.image.load("graphics/timer.png").convert_alpha()
 timer_rect = timer_surf.get_rect(topleft = (virtual_w // 2 + 55, virtual_h - 355))
 
+board_layout = [
+    ["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"],
+    ["bP", "bP", "bP", "bP", "bP", "bP", "bP", "bP"],
+    ["--", "--", "--", "--", "--", "--", "--", "--"],
+    ["--", "--", "--", "--", "--", "--", "--", "--"],
+    ["--", "--", "--", "--", "--", "--", "--", "--"],
+    ["--", "--", "--", "--", "--", "--", "--", "--"],
+    ["wP", "wP", "wP", "wP", "wP", "wP", "wP", "wP"],
+    ["wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"],
+]
+
+pieces_sprite = {}
+sprite_sheet = pygame.image.load("graphics/chess_pieces.png").convert_alpha()
+
+sprite_w = 11
+sprite_h = sprite_sheet.get_height() 
+sheet_order = ['bP', 'bR', 'bN', 'skip','bB', 'skip', 'bQ', 'bK', 'wP', 'wR', 'wN', 'skip', 'wB', 'skip', 'wQ', 'wK']
+
+for index, piece in enumerate(sheet_order):
+    if piece == "skip":
+        continue
+    crop_x = index * sprite_w
+    crop_y = 0
+    sub_surf = sprite_sheet.subsurface(pygame.Rect(crop_x, crop_y, sprite_w, sprite_h))
+    pieces_sprite[piece] = pygame.transform.scale_by(sub_surf, 2)
+
 bg = pygame.image.load('graphics/bg.png')
 
 def iso_to_grid(mx, my):
@@ -66,8 +92,11 @@ def iso_to_grid(mx, my):
     dx = mx - start_x
     dy = my - start_y
 
-    col = int((dx / (tile_w / 2) + dy / (tile_h / 2)) / 2)
-    row = int((dy / (tile_h / 2) - dx / (tile_w / 2)) / 2)
+    rot_col = int((dx / (tile_w / 2) + dy / (tile_h / 2)) / 2)
+    rot_row = int((dy / (tile_h / 2) - dx / (tile_w / 2)) / 2)
+
+    row = rot_col
+    col = 7 - rot_row
 
     if 0 <= row < 8 and 0 <= col < 8:
         return row, col
@@ -80,8 +109,11 @@ def grid_to_iso(row, col):
     tile_w = 64
     tile_h = 32
 
-    iso_x = start_x + (col - row) * (tile_w // 2)
-    iso_y = start_y + (row + col) * (tile_h // 2)
+    rot_row = 7 - col
+    rot_col = row
+
+    iso_x = start_x + (rot_col - rot_row) * (tile_w // 2)
+    iso_y = start_y + (rot_row + rot_col) * (tile_h // 2)
 
     return iso_x, iso_y + 16
 
@@ -111,9 +143,23 @@ while running:
                         game_state = "setup"
 
                 if game_state == "play" and hovered_tile is not None:
+                    click_row, click_col = hovered_tile
                     print(f'Clicked on grid cell: Row {hovered_tile[0]} Col {hovered_tile[1]}')
-                    selected_tile = hovered_tile
 
+                    if selected_tile is None:
+                        if board_layout[click_row][click_col] != "--":
+                            selected_tile = hovered_tile
+                            print(f'Selected piece: {board_layout[click_row][click_col]} at {selected_tile}')
+                    else:
+                        sel_row, sel_col = selected_tile
+                        if selected_tile == hovered_tile:
+                            print(f'Deselected piece at {selected_tile}')
+                            selected_tile = None
+                        else:
+                            moving_piece = board_layout[sel_row][sel_col]
+                            board_layout[click_row][click_col] = moving_piece
+                            board_layout[sel_row][sel_col] = "--"
+                            selected_tile = None
 
                 elif game_state == "setup":
                     if pygame.Rect(virtual_w // 2 + 60, 160, 30, 30).collidepoint(mx, my):
@@ -171,6 +217,30 @@ while running:
             iso_x, iso_y = grid_to_iso(s_row, s_col)
             canvas.blit(select_surf, (iso_x - 34, iso_y - 15))
 
+        shadow_surf = pygame.Surface((15,8), pygame.SRCALPHA)
+        pygame.draw.ellipse(shadow_surf, (20, 15, 10, 90), (0,0,15,8))
+        shadow_surf = pygame.transform.scale_by(shadow_surf, 2)
+
+        for row in range(8):
+            for col in range(8):
+                piece = board_layout[row][col]
+                if piece != "--":
+                    base_x, base_y = grid_to_iso(row, col)
+                    canvas.blit(shadow_surf, (base_x - 16, base_y - 7))
+                    
+        for row in range(8):
+            for col in range(8):
+                piece = board_layout[row][col]
+
+                if piece != "--":
+                    base_x, base_y = grid_to_iso(row, col)
+                    sprite = pieces_sprite[piece]
+                    render_x = base_x - (sprite.get_width() // 2)
+                    render_y = base_y - sprite.get_height() + 7 
+                    if selected_tile == (row, col):
+                        render_y -= 10
+                    canvas.blit(sprite, (render_x, render_y))
+
     pygame.draw.line(canvas, (255, 255, 255), (mx, my - 4), (mx, my + 4), 1)
     pygame.draw.line(canvas, (255, 255, 255), (mx - 4, my), (mx + 4, my), 1)
 
@@ -178,8 +248,6 @@ while running:
 
     pygame.display.update()
     clock.tick(120)
-
-
 
 pygame.quit()
 
