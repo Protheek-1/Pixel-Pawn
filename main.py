@@ -1,5 +1,5 @@
 import pygame
-import sys
+import sys # not needed rn but maybe at some point
 import random
 import math
 
@@ -7,26 +7,24 @@ pygame.init()
 
 window_w = 1440
 window_h = 810
-virtual_w = 640
+virtual_w = 640 # using a virtual scaling system to keep pixel art crispy
 virtual_h = 360
 
 window = pygame.display.set_mode((window_w, window_h))
 canvas = pygame.Surface((virtual_w, virtual_h))
 clock = pygame.time.Clock()
 pygame.display.set_caption("Pixel Pawn: DELUXE EDITION")
-pygame.mouse.set_visible(False)
+pygame.mouse.set_visible(False) # so that i can make a custom cursor
 
-game_state  = "title"
+game_state  = "title" # global variables
 running = True
-
 time_control_minutes = 10
 white_time = time_control_minutes * 60
 black_time = time_control_minutes * 60
 turn = 'white'
 selected_tile = None
 
-
-
+# text stuff
 title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 80)
 shadow_text = title_font.render("Pixel Pawn", True, (10, 10, 10))
 title_text = title_font.render("Pixel Pawn", True, (255, 255, 255))
@@ -46,6 +44,7 @@ setup_hover_text = ui_font.render("> SETUP <", True, (238, 220, 130))
 setup_rect = setup_text.get_rect(center = (virtual_w // 2 + 60, 225))
 setup_hover_rect = setup_rect.move(-18, 0)
 
+# stuff on table
 board_base = pygame.image.load("graphics/board.png").convert_alpha()
 board_surf = pygame.transform.scale_by(board_base, 2)
 board_x = ((320 - board_surf.get_width()) // 2) + 120
@@ -55,6 +54,7 @@ board_rect = board_surf.get_rect(topleft = (board_x, board_y))
 timer_surf = pygame.image.load("graphics/timer.png").convert_alpha()
 timer_rect = timer_surf.get_rect(topleft = (virtual_w // 2 + 55, virtual_h - 355))
 
+# actual board layout
 board_layout = [
     ["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"],
     ["bP", "bP", "bP", "bP", "bP", "bP", "bP", "bP"],
@@ -83,6 +83,7 @@ for index, piece in enumerate(sheet_order):
 
 bg = pygame.image.load('graphics/bg.png')
 
+# mapping grid to the board and the back cause isometric is weird also hard  
 def iso_to_grid(mx, my):
     start_x = 282
     start_y = 61
@@ -117,8 +118,9 @@ def grid_to_iso(row, col):
 
     return iso_x, iso_y + 16
 
+# main loop
 while running:
-
+    # get mouse position cause were doing the virtual canvas thing and mouse pos is messed up
     raw_mx, raw_my = pygame.mouse.get_pos()
     mx = int(raw_mx * (virtual_w / window_w))
     my = int(raw_my * (virtual_h / window_h))
@@ -160,7 +162,7 @@ while running:
                             board_layout[sel_row][sel_col] = "--"
                             selected_tile = None
 
-                elif game_state == "setup":
+                elif game_state == "setup": # code for setup screen but like i havent actually added buttosn so its invisible, spooky
                     if pygame.Rect(virtual_w // 2 + 60, 160, 30, 30).collidepoint(mx, my):
                         time_control_minutes = min(60, time_control_minutes + 1)
                     elif pygame.Rect(virtual_w // 2 - 90, 160, 30, 30).collidepoint(mx, my):
@@ -168,9 +170,9 @@ while running:
                     elif pygame.Rect(virtual_w // 2 - 50, 200, 30, 30).collidepoint(mx, my):
                         game_state = "title"
            
-    canvas.fill((44, 44, 60))
+    canvas.fill((42, 42, 58))
 
-    if game_state == "title":
+    if game_state == "title": # basically done
        
         canvas.blit(shadow_text, title_rect.move(4, 4))
         canvas.blit(title_text, title_rect)
@@ -192,10 +194,9 @@ while running:
             box_rect = setup_rect.inflate(10, 6)
             canvas.blit(setup_text, setup_rect)
 
-    if game_state == "setup":
+    if game_state == "setup": # TODO: Add setup screen
         pass
        
-
     if game_state == "play":
   
         canvas.blit(bg, (0,0))
@@ -240,8 +241,10 @@ while running:
                         render_y -= 10
                     canvas.blit(sprite, (render_x, render_y))
 
+    # draw cursor cross hair rn
     pygame.draw.line(canvas, (255, 255, 255), (mx, my - 4), (mx, my + 4), 1)
     pygame.draw.line(canvas, (255, 255, 255), (mx - 4, my), (mx + 4, my), 1)
+    # want to make it like expand when hovering a piece or maybe hoding a piece or smthn
 
     pygame.transform.scale(canvas, (window_w, window_h), window)
 
