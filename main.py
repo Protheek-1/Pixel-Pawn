@@ -24,6 +24,9 @@ black_time = time_control_minutes * 60
 turn = 'white'
 selected_tile = None
 dragging_piece = None
+game_message = ""
+game_over = False
+possible_moves = []
 
 # text stuff
 title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 80)
@@ -121,7 +124,7 @@ def grid_to_iso(row, col): # turns the grid back into iso cords
 
 
 # move limitations for pieces
-def is_move_legal(start_pos, end_pos):
+def is_piece_move_valid(start_pos, end_pos):
     s_row, s_col = start_pos
     e_row, e_col = end_pos
     piece = board_layout[s_row][s_col]
@@ -178,6 +181,130 @@ def is_move_legal(start_pos, end_pos):
     
     return False
 
+def opposite_color(color):
+    return 'black' if color == 'white' else 'white'
+
+def piece_attacks_square(start_pos, target_pos):
+    s_row, s_col = start_pos
+    t_row, t_col = target_pos
+
+    piece = board_layout[s_row][s_col]
+    if piece == '--':
+        return False
+
+    dx = t_col - s_col
+    dy = t_row - s_row
+    piece_type = piece[1]
+    color = piece[0]
+
+    if piece_type == 'P':
+        direction = -1 if color == 'w' else 1
+        return abs(dx) == 1 and dy == direction
+
+    if piece_type == 'N':
+        return dx**2 + dy**2 == 5
+
+    if piece_type == 'K':
+        return 0 < max(abs(dx), abs(dy)) <= 1
+
+    if piece_type in ('R', 'B', 'Q'):
+        rook_move = dx == 0 or dy == 0
+        bishop_move = abs(dx) == abs(dy)
+
+        if piece_type == 'R' and not rook_move:
+            return False
+        if piece_type == 'B' and not bishop_move:
+            return False
+        if piece_type == 'Q' and not (rook_move or bishop_move):
+            return False
+
+        step_col = 0 if dx == 0 else (1 if dx > 0 else -1)
+        step_row = 0 if dy == 0 else (1 if dy > 0 else -1)
+
+        row = s_row + step_row
+        col = s_col + step_col
+
+        while (row, col) != (t_row, t_col):
+            if board_layout[row][col] != '--':
+                return False
+            row += step_row
+            col += step_col
+        return True
+    return False
+
+def is_square_attacked(pos, by_colour):
+    prefix = 'w' if by_colour == 'white' else 'b'
+    for row in range(8):
+        for col in range(8):
+            piece = board_layout[row][col]
+            if piece.startswith(prefix) and piece_attacks_square((row, col), pos):
+                return True
+    return False
+
+def is_in_check(colour):
+    king = 'wK' if colour == 'white' else 'bK'
+    
+    for row in range(8):
+        for col in range(8):
+            if board_layout[row][col] == king:
+                return is_square_attacked((row, col), opposite_color(colour))
+    print(f"DEBUG: {king} not found on board!")
+    return False
+
+def is_move_legal(start_pos, end_pos):
+    s_row, s_col = start_pos
+    e_row, e_col = end_pos
+    piece = board_layout[s_row][s_col]
+    target = board_layout[e_row][e_col]
+
+    if piece == '--':
+        return False
+
+    if target != '--' and target[1] == 'K':
+        return False
+
+    if not is_piece_move_valid(start_pos, end_pos):
+        return False
+
+    colour = 'white' if piece.startswith('w') else 'black'
+
+    board_layout[s_row][s_col] = '--'
+    board_layout[e_row][e_col] = piece
+
+    safe = not is_in_check(colour)
+
+    board_layout[s_row][s_col] = piece
+    board_layout[e_row][e_col] = target
+
+    return safe
+
+def get_legal_moves(start_pos):
+    legal_moves = []
+
+    for row in range(8):
+        for col in range(8):
+            if is_move_legal(start_pos, (row, col)):
+                legal_moves.append((row, col))
+    return legal_moves
+
+def has_legal_moves(colour):
+    prefix = 'w' if colour == 'white' else 'b'
+    for row in range(8):
+        for col in range(8):
+            piece = board_layout[row][col]
+            if not piece.startswith(prefix):
+                continue
+            start_pos = (row, col)
+            for end_row in range(8):
+                for end_col in range(8):
+                    if is_move_legal(start_pos, (end_row, end_col)):
+                        return True
+    return False
+
+
+
+
+
 # main loop
 while running:
     # get mouse position cause were doing the virtual canvas thing and mouse pos is messed up
@@ -201,11 +328,13 @@ while running:
                         white_time = time_control_minutes * 60
                         black_time = time_control_minutes * 60
                         turn = 'white'
+                        game_message = ""
+                        game_over = False
                         game_state = "play"
                     elif setup_hover:
                         game_state = "setup"
 
-                if game_state == "play" and hovered_tile is not None:
+                if game_state == "play" and not game_over and hovered_tile is not None:
                     click_row, click_col = hovered_tile
                     clicked_piece = board_layout[click_row][click_col]
 
@@ -213,6 +342,7 @@ while running:
                         if clicked_piece != "--" and ((turn == 'white' and clicked_piece.startswith('w')) or (turn == 'black' and clicked_piece.startswith('b'))):
                             selected_tile = hovered_tile
                             dragging_piece = clicked_piece
+                            possible_moves = get_legal_moves(selected_tile)
                             board_layout[click_row][click_col] = "--"
 
                 elif game_state == "setup": # code for setup screen but like i havent actually added buttosn so its invisible, spooky
@@ -229,6 +359,7 @@ while running:
                     if hovered_tile is not None:
                         s_row, s_col = selected_tile
                         board_layout[s_row][s_col] = dragging_piece
+                        possible_moves = []
 
                         move_is_valid = is_move_legal(selected_tile, hovered_tile)
 
@@ -238,7 +369,22 @@ while running:
                         # if is_move_legal(selected_tile, hovered_tile):
                             board_layout[hovered_tile[0]][hovered_tile[1]] = dragging_piece
                             if selected_tile != hovered_tile:
-                                turn = 'black' if turn == 'white' else 'white'
+                                turn = opposite_color(turn)
+
+                                if is_in_check(turn):
+                                    if not has_legal_moves(turn):
+                                        winner = opposite_color(turn).upper()
+                                        game_message = f"Checkmate!{winner} wins"
+                                        game_over = True
+                                    else:
+                                        game_message = f"{turn.upper()} is in check"
+
+                                else:
+                                    if not has_legal_moves(turn):
+                                        game_message = 'Stalemate!'
+                                        game_over = True
+                                    else:
+                                        game_message = ""
                         else:
                             board_layout[selected_tile[0]][selected_tile[1]] = dragging_piece
                     else:
@@ -281,14 +427,14 @@ while running:
 
         if hovered_tile is not None:
             hover_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
-            pygame.draw.polygon(hover_surf, (100, 149, 237, 80), [(32, 0), (64, 16), (32, 32), (0, 16)])
+            pygame.draw.polygon(hover_surf, (255, 235, 150, 80), [(32, 0), (64, 16), (32, 32), (0, 16)])
             h_row, h_col = hovered_tile
             iso_x, iso_y = grid_to_iso(h_row, h_col)
             canvas.blit(hover_surf, (iso_x - 34, iso_y - 15))
 
         if selected_tile is not None:
             select_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
-            pygame.draw.polygon(select_surf, (255, 235, 150, 100), [(32, 0), (64, 16), (32, 32), (0, 16)])
+            pygame.draw.polygon(select_surf, (100, 149, 237, 100), [(32, 0), (64, 16), (32, 32), (0, 16)])
             s_row, s_col = selected_tile
             iso_x, iso_y = grid_to_iso(s_row, s_col)
             canvas.blit(select_surf, (iso_x - 34, iso_y - 15))
@@ -304,6 +450,9 @@ while running:
                     base_x, base_y = grid_to_iso(row, col)
                     canvas.blit(shadow_surf, (base_x - 16, base_y - 7))
 
+        for move_row, move_col in possible_moves:
+                    iso_x, iso_y = grid_to_iso(move_row, move_col)
+                    canvas.blit(select_surf, (iso_x - 34, iso_y - 15))
 
         if dragging_piece is not None:
                     sprite = pieces_sprite[dragging_piece]
@@ -311,7 +460,7 @@ while running:
                     drag_y = my - sprite.get_height() + 7
                     canvas.blit(shadow_surf, (drag_x - 5, drag_y + 60))
                     canvas.blit(sprite, (drag_x, drag_y))
-                    
+
         for row in range(8):
             for col in range(8):
                 piece = board_layout[row][col]
@@ -326,8 +475,12 @@ while running:
                         render_y -= 10
                     canvas.blit(sprite, (render_x, render_y))
 
-        
-          
+
+        if game_message:
+            message_colour = ((255, 100, 100) if 'Check' in game_message or 'Wins' in game_message else (238, 220, 130))
+
+            message_surf = ui_font.render(game_message, True, message_colour)
+            canvas.blit(message_surf, (12,12))
 
     # draw cursor cross hair rn
     pygame.draw.line(canvas, (255, 255, 255), (mx, my - 4), (mx, my + 4), 1)
