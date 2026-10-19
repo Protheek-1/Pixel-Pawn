@@ -104,7 +104,7 @@ def iso_to_grid(mx, my):
 
     return None
 
-def grid_to_iso(row, col):
+def grid_to_iso(row, col): # turns the grid back into iso cords
     start_x = 282
     start_y = 61
     tile_w = 64
@@ -117,6 +117,65 @@ def grid_to_iso(row, col):
     iso_y = start_y + (rot_row + rot_col) * (tile_h // 2)
 
     return iso_x, iso_y + 16
+
+
+# move limitations for pieces
+def is_move_legal(start_pos, end_pos):
+    s_row, s_col = start_pos
+    e_row, e_col = end_pos
+    piece = board_layout[s_row][s_col]
+    target = board_layout[e_row][e_col]
+
+    if target != "--" and target[0] == piece[0]:
+        return False
+
+    dx = e_col - s_col
+    dy = e_row - s_row
+
+    piece_type = piece[1]
+
+    if piece_type == 'N':
+        return (dx**2 + dy**2) == 5
+
+    elif piece_type == 'P':
+        direction = -1 if piece.startswith('w') else 1
+        start_row = 6 if piece.startswith('w') else 1
+        if dx == 0 and dy == direction:
+            return target == '--'
+        if dx == 0  and  s_row == start_row and dy == (2 * direction):
+            return target == '--' and board_layout[s_row + direction][s_col] == '--'
+        if dx**2 == 1 and dy == direction:
+            return target != '--'
+        return False
+
+    elif piece_type == 'K':
+        return 0 < (dx**2 + dy**2) <= 2
+
+    elif piece_type in ('R', 'B', 'Q'):
+        is_rook_move = (dx * dy == 0)
+        is_bishop_move = (dx**2 == dy**2)
+
+        if piece_type == 'R' and not is_rook_move:
+            return False
+        if piece_type == 'B' and not is_bishop_move:
+            return False
+        if piece_type == 'Q' and not (is_bishop_move or is_rook_move):
+            return False
+
+        step_x = 0 if dx == 0 else dx // abs(dx)
+        step_y = 0 if dy == 0 else dy // abs(dy)
+
+        check_row = s_row + step_y
+        check_col = s_col + step_x
+
+        while (check_row, check_col) != (e_row, e_col):
+            if board_layout[check_row][check_col] != '--':
+                return False
+            check_row += step_y
+            check_col += step_x
+        return True
+    
+    return False
 
 # main loop
 while running:
@@ -146,9 +205,10 @@ while running:
 
                 if game_state == "play" and hovered_tile is not None:
                     click_row, click_col = hovered_tile
+                    clicked_piece = board_layout[click_row][click_col]
 
-                    if selected_tile is None:
-                        if board_layout[click_row][click_col] != "--":
+                    if selected_tile is None:  #  all the code for selecting a piece and like moving it
+                        if clicked_piece != "--" and ((turn == 'white' and clicked_piece.startswith('w')) or (turn == 'black' and clicked_piece.startswith('b'))):
                             selected_tile = hovered_tile
                             print(f'Selected piece: {board_layout[click_row][click_col]} at {selected_tile}')
                     else:
@@ -156,11 +216,14 @@ while running:
                         if selected_tile == hovered_tile:
                             print(f'Deselected piece at {selected_tile}')
                             selected_tile = None
-                        else:
+                        elif is_move_legal(selected_tile, hovered_tile):
                             moving_piece = board_layout[sel_row][sel_col]
                             board_layout[click_row][click_col] = moving_piece
                             board_layout[sel_row][sel_col] = "--"
                             selected_tile = None
+                            turn = 'black' if turn == 'white' else 'white'
+                        else:
+                            pass
 
                 elif game_state == "setup": # code for setup screen but like i havent actually added buttosn so its invisible, spooky
                     if pygame.Rect(virtual_w // 2 + 60, 160, 30, 30).collidepoint(mx, my):
