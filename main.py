@@ -122,7 +122,6 @@ def grid_to_iso(row, col): # turns the grid back into iso cords
 
     return iso_x, iso_y + 16
 
-
 # move limitations for pieces
 def is_piece_move_valid(start_pos, end_pos):
     s_row, s_col = start_pos
@@ -301,10 +300,6 @@ def has_legal_moves(colour):
                         return True
     return False
 
-
-
-
-
 # main loop
 while running:
     # get mouse position cause were doing the virtual canvas thing and mouse pos is messed up
@@ -425,6 +420,7 @@ while running:
         canvas.blit(board_surf, board_rect)
         canvas.blit(timer_surf, timer_rect)
 
+
         if hovered_tile is not None:
             hover_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
             pygame.draw.polygon(hover_surf, (255, 235, 150, 80), [(32, 0), (64, 16), (32, 32), (0, 16)])
@@ -443,16 +439,19 @@ while running:
         pygame.draw.ellipse(shadow_surf, (20, 15, 10, 90), (0,0,15,8))
         shadow_surf = pygame.transform.scale_by(shadow_surf, 2)
 
+        mouse_grid = iso_to_grid(mx, my)
+        mouse_row = mouse_grid[0] if mouse_grid is not None else -1
+
+        for move_row, move_col in possible_moves:
+                    iso_x, iso_y = grid_to_iso(move_row, move_col)
+                    canvas.blit(select_surf, (iso_x - 34, iso_y - 15))
+
         for row in range(8):
             for col in range(8):
                 piece = board_layout[row][col]
                 if piece != "--":
                     base_x, base_y = grid_to_iso(row, col)
                     canvas.blit(shadow_surf, (base_x - 16, base_y - 7))
-
-        for move_row, move_col in possible_moves:
-                    iso_x, iso_y = grid_to_iso(move_row, move_col)
-                    canvas.blit(select_surf, (iso_x - 34, iso_y - 15))
 
         if dragging_piece is not None:
                     sprite = pieces_sprite[dragging_piece]
@@ -462,6 +461,13 @@ while running:
                     canvas.blit(sprite, (drag_x, drag_y))
 
         for row in range(8):
+
+            if dragging_piece is not None and mouse_row == row :
+                sprite = pieces_sprite[dragging_piece]
+                drag_x = mx - (sprite.get_width() // 2)
+                drag_y = my - sprite.get_height() + 7
+                canvas.blit(sprite, (drag_x, drag_y))
+
             for col in range(8):
                 piece = board_layout[row][col]
 
@@ -475,6 +481,11 @@ while running:
                         render_y -= 10
                     canvas.blit(sprite, (render_x, render_y))
 
+            if dragging_piece is not None and mouse_row >= 7:
+                sprite = pieces_sprite[dragging_piece]
+                drag_x = mx - (sprite.get_width() // 2)
+                drag_y = my - sprite.get_height() + 7
+                canvas.blit(sprite, (drag_x, drag_y))
 
         if game_message:
             message_colour = ((255, 100, 100) if 'Check' in game_message or 'Wins' in game_message else (238, 220, 130))
