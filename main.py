@@ -92,7 +92,7 @@ def iso_to_grid(mx, my):
     tile_h = 32
 
     dx = mx - start_x
-    dy = my - start_y
+    dy = (my + 7) - start_y
 
     rot_col = int((dx / (tile_w / 2) + dy / (tile_h / 2)) / 2)
     rot_row = int((dy / (tile_h / 2) - dx / (tile_w / 2)) / 2)
@@ -300,9 +300,17 @@ while running:
         for row in range(8):
             for col in range(8):
                 piece = board_layout[row][col]
-                if piece != "--" or (selected_tile == (row, col) and dragging_piece is not None):
+                if piece != "--":
                     base_x, base_y = grid_to_iso(row, col)
                     canvas.blit(shadow_surf, (base_x - 16, base_y - 7))
+
+
+        if dragging_piece is not None:
+                    sprite = pieces_sprite[dragging_piece]
+                    drag_x = mx - (sprite.get_width() // 2)
+                    drag_y = my - sprite.get_height() + 7
+                    canvas.blit(shadow_surf, (drag_x - 5, drag_y + 60))
+                    canvas.blit(sprite, (drag_x, drag_y))
                     
         for row in range(8):
             for col in range(8):
@@ -312,17 +320,14 @@ while running:
                     base_x, base_y = grid_to_iso(row, col)
                     sprite = pieces_sprite[piece]
                     render_x = base_x - (sprite.get_width() // 2)
-                    render_y = base_y - sprite.get_height() + 5 
+                    render_y = base_y - sprite.get_height() + 7 
 
                     if selected_tile == (row, col):
                         render_y -= 10
                     canvas.blit(sprite, (render_x, render_y))
 
-        if dragging_piece is not None:
-            sprite = pieces_sprite[dragging_piece]
-            drag_x = mx - (sprite.get_width() // 2)
-            drag_y = my - sprite.get_height() + 7
-            canvas.blit(sprite, (drag_x, drag_y))
+        
+          
 
     # draw cursor cross hair rn
     pygame.draw.line(canvas, (255, 255, 255), (mx, my - 4), (mx, my + 4), 1)
