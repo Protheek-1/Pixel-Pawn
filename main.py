@@ -23,6 +23,7 @@ white_time = time_control_minutes * 60
 black_time = time_control_minutes * 60
 turn = 'white'
 selected_tile = None
+dragging_piece = None
 
 # text stuff
 title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 80)
@@ -192,6 +193,7 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 if game_state == "title":
@@ -210,20 +212,8 @@ while running:
                     if selected_tile is None:  #  all the code for selecting a piece and like moving it
                         if clicked_piece != "--" and ((turn == 'white' and clicked_piece.startswith('w')) or (turn == 'black' and clicked_piece.startswith('b'))):
                             selected_tile = hovered_tile
-                            print(f'Selected piece: {board_layout[click_row][click_col]} at {selected_tile}')
-                    else:
-                        sel_row, sel_col = selected_tile
-                        if selected_tile == hovered_tile:
-                            print(f'Deselected piece at {selected_tile}')
-                            selected_tile = None
-                        elif is_move_legal(selected_tile, hovered_tile):
-                            moving_piece = board_layout[sel_row][sel_col]
-                            board_layout[click_row][click_col] = moving_piece
-                            board_layout[sel_row][sel_col] = "--"
-                            selected_tile = None
-                            turn = 'black' if turn == 'white' else 'white'
-                        else:
-                            pass
+                            dragging_piece = clicked_piece
+                            board_layout[click_row][click_col] = "--"
 
                 elif game_state == "setup": # code for setup screen but like i havent actually added buttosn so its invisible, spooky
                     if pygame.Rect(virtual_w // 2 + 60, 160, 30, 30).collidepoint(mx, my):
@@ -232,6 +222,29 @@ while running:
                         time_control_minutes = max(1, time_control_minutes - 1)
                     elif pygame.Rect(virtual_w // 2 - 50, 200, 30, 30).collidepoint(mx, my):
                         game_state = "title"
+
+        if event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 1 and game_state == "play":
+                if dragging_piece is not None:
+                    if hovered_tile is not None:
+                        s_row, s_col = selected_tile
+                        board_layout[s_row][s_col] = dragging_piece
+
+                        move_is_valid = is_move_legal(selected_tile, hovered_tile)
+
+                        board_layout[s_row][s_col] = "--"
+
+                        if move_is_valid:
+                        # if is_move_legal(selected_tile, hovered_tile):
+                            board_layout[hovered_tile[0]][hovered_tile[1]] = dragging_piece
+                            if selected_tile != hovered_tile:
+                                turn = 'black' if turn == 'white' else 'white'
+                        else:
+                            board_layout[selected_tile[0]][selected_tile[1]] = dragging_piece
+                    else:
+                        board_layout[selected_tile[0]][selected_tile[1]] = dragging_piece
+                    dragging_piece = None
+                    selected_tile = None
            
     canvas.fill((42, 42, 58))
 
@@ -268,14 +281,14 @@ while running:
 
         if hovered_tile is not None:
             hover_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
-            pygame.draw.polygon(hover_surf, (255, 235, 150, 80), [(32, 0), (64, 16), (32, 32), (0, 16)])
+            pygame.draw.polygon(hover_surf, (100, 149, 237, 80), [(32, 0), (64, 16), (32, 32), (0, 16)])
             h_row, h_col = hovered_tile
             iso_x, iso_y = grid_to_iso(h_row, h_col)
             canvas.blit(hover_surf, (iso_x - 34, iso_y - 15))
 
         if selected_tile is not None:
             select_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
-            pygame.draw.polygon(select_surf, (100, 149, 237, 100), [(32, 0), (64, 16), (32, 32), (0, 16)])
+            pygame.draw.polygon(select_surf, (255, 235, 150, 100), [(32, 0), (64, 16), (32, 32), (0, 16)])
             s_row, s_col = selected_tile
             iso_x, iso_y = grid_to_iso(s_row, s_col)
             canvas.blit(select_surf, (iso_x - 34, iso_y - 15))
@@ -287,7 +300,7 @@ while running:
         for row in range(8):
             for col in range(8):
                 piece = board_layout[row][col]
-                if piece != "--":
+                if piece != "--" or (selected_tile == (row, col) and dragging_piece is not None):
                     base_x, base_y = grid_to_iso(row, col)
                     canvas.blit(shadow_surf, (base_x - 16, base_y - 7))
                     
@@ -299,10 +312,17 @@ while running:
                     base_x, base_y = grid_to_iso(row, col)
                     sprite = pieces_sprite[piece]
                     render_x = base_x - (sprite.get_width() // 2)
-                    render_y = base_y - sprite.get_height() + 7 
+                    render_y = base_y - sprite.get_height() + 5 
+
                     if selected_tile == (row, col):
                         render_y -= 10
                     canvas.blit(sprite, (render_x, render_y))
+
+        if dragging_piece is not None:
+            sprite = pieces_sprite[dragging_piece]
+            drag_x = mx - (sprite.get_width() // 2)
+            drag_y = my - sprite.get_height() + 7
+            canvas.blit(sprite, (drag_x, drag_y))
 
     # draw cursor cross hair rn
     pygame.draw.line(canvas, (255, 255, 255), (mx, my - 4), (mx, my + 4), 1)
