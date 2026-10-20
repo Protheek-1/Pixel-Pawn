@@ -21,12 +21,14 @@ running = True
 time_control_minutes = 10
 white_time = time_control_minutes * 60
 black_time = time_control_minutes * 60
+last_time = 0
 turn = 'white'
 selected_tile = None
 dragging_piece = None
 game_message = ""
 game_over = False
 possible_moves = []
+
 
 # text stuff
 title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 80)
@@ -47,6 +49,14 @@ setup_shadow_text = ui_font.render("SETUP", True, (10, 10, 10))
 setup_hover_text = ui_font.render("> SETUP <", True, (238, 220, 130))
 setup_rect = setup_text.get_rect(center = (virtual_w // 2 + 60, 225))
 setup_hover_rect = setup_rect.move(-18, 0)
+
+left_arrow_rect = pygame.Rect(virtual_w // 2 - 90, 150, 30, 30)
+right_arrow_rect = pygame.Rect(virtual_w // 2 + 60, 148, 30, 30)
+
+back_btn_text = ui_font.render("BACK", True, (255, 255, 255))
+back_btn_shadow_text = ui_font.render("BACK", True, (10, 10, 10))
+back_btn_rect = back_btn_text.get_rect(center = (virtual_w // 2, 235))
+
 
 # stuff on table
 board_base = pygame.image.load("graphics/board.png").convert_alpha()
@@ -303,6 +313,17 @@ def has_legal_moves(colour):
 # main loop
 while running:
     # get mouse position cause were doing the virtual canvas thing and mouse pos is messed up
+
+    if game_state == 'play':
+        current_time = pygame.time.get_ticks()
+        elasped_seconds = (current_time - last_time) / 1000
+        last_time = current_time
+
+        if turn == 'white':
+            white_time = max(0, white_time - elasped_seconds)
+        else:
+            black_time = max(0, black_time - elasped_seconds)
+
     raw_mx, raw_my = pygame.mouse.get_pos()
     mx = int(raw_mx * (virtual_w / window_w))
     my = int(raw_my * (virtual_h / window_h))
@@ -323,6 +344,7 @@ while running:
                         white_time = time_control_minutes * 60
                         black_time = time_control_minutes * 60
                         turn = 'white'
+                        last_time = pygame.time.get_ticks()
                         game_message = ""
                         game_over = False
                         game_state = "play"
@@ -341,11 +363,11 @@ while running:
                             board_layout[click_row][click_col] = "--"
 
                 elif game_state == "setup": # code for setup screen but like i havent actually added buttosn so its invisible, spooky
-                    if pygame.Rect(virtual_w // 2 + 60, 160, 30, 30).collidepoint(mx, my):
-                        time_control_minutes = min(60, time_control_minutes + 1)
-                    elif pygame.Rect(virtual_w // 2 - 90, 160, 30, 30).collidepoint(mx, my):
+                    if left_arrow_rect.collidepoint(mx, my):
                         time_control_minutes = max(1, time_control_minutes - 1)
-                    elif pygame.Rect(virtual_w // 2 - 50, 200, 30, 30).collidepoint(mx, my):
+                    elif right_arrow_rect.collidepoint(mx, my):
+                        time_control_minutes = min(60, time_control_minutes + 1)
+                    elif back_btn_rect.collidepoint(mx, my):
                         game_state = "title"
 
         if event.type == pygame.MOUSEBUTTONUP:
@@ -412,14 +434,40 @@ while running:
             canvas.blit(setup_text, setup_rect)
 
     if game_state == "setup": # TODO: Add setup screen
-        pass
+        setup_title = title_font.render("TIME CONTROL", True, (255, 255, 255))
+        setup_title_shadow = title_font.render("TIME CONTROL", True, (10, 10, 10))
+        setup_title_rect = setup_title.get_rect(center = (virtual_w // 2 + 10, 70))
+        canvas.blit(setup_title_shadow, setup_title_rect.move(4, 4))
+        canvas.blit(setup_title, setup_title_rect)
+
+        mins_text = ui_font.render(f'{time_control_minutes}Min', True, (255, 255, 255))
+        mines_shadow_text = ui_font.render(f'{time_control_minutes}Min', True, (10, 10, 10))
+        mins_rect = mins_text.get_rect(center = (virtual_w // 2, 165))
+        canvas.blit(mines_shadow_text, mins_rect.move(3, 3))
+        canvas.blit(mins_text, mins_rect)
+
+        left_arrow_text = ui_font.render('<', True, (255, 255, 255) if not left_arrow_rect.collidepoint(mx, my) else (238, 220, 130))
+        right_arrow_text = ui_font.render('>', True, (255, 255, 255) if not right_arrow_rect.collidepoint(mx, my) else (238, 220, 130))
+        back_btn_text = ui_font.render('BACK', True, (255, 255, 255) if not back_btn_rect.collidepoint(mx, my) else (238, 220, 130))
+
+        canvas.blit(left_arrow_text, left_arrow_text.get_rect(center = left_arrow_rect.center))
+        canvas.blit(right_arrow_text, right_arrow_text.get_rect(center = right_arrow_rect.center))
+        canvas.blit(back_btn_shadow_text, back_btn_rect.move(3,3))
+        canvas.blit(back_btn_text, back_btn_text.get_rect(center = back_btn_rect.center))
        
     if game_state == "play":
   
         canvas.blit(bg, (0,0))
         canvas.blit(board_surf, board_rect)
         canvas.blit(timer_surf, timer_rect)
+        w_mins, w_secs = int(white_time // 60), int(white_time % 60)
+        b_mins, b_secs = int(black_time // 60), int(black_time % 60)
 
+        #temp rendering, will skew
+        white_time_text = ui_font.render(f"{w_mins:02d}:{w_secs:02d}", True, (255, 255, 255))
+        black_time_text = ui_font.render(f"{b_mins:02d}:{b_secs:02d}", True, (255, 255, 255))
+        canvas.blit(white_time_text, (timer_rect.x + 24, timer_rect.y + 18))
+        canvas.blit(black_time_text, (timer_rect.x + 24, timer_rect.y + 54))
 
         if hovered_tile is not None:
             hover_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
