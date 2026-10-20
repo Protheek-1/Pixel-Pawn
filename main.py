@@ -310,6 +310,23 @@ def has_legal_moves(colour):
                         return True
     return False
 
+def make_iso_text(text_string, font, text_color, shear_y = 0.5):
+
+    flat_timer_text = font.render(text_string, True, text_color)
+    width, height = flat_timer_text.get_size()
+    slant_stretch = int(abs(shear_y) * width)
+    new_height = height + slant_stretch + 12
+    iso_surface = pygame.Surface((width, new_height), pygame.SRCALPHA)
+
+    for x in range(width):
+        offset_y = int(shear_y * (x))
+        if shear_y < 0:
+            offset_y += slant_stretch
+  
+        iso_surface.blit(flat_timer_text, (x, offset_y + 6), (x, 0, 1, height))
+
+    return iso_surface
+
 # main loop
 while running:
     # get mouse position cause were doing the virtual canvas thing and mouse pos is messed up
@@ -463,11 +480,27 @@ while running:
         w_mins, w_secs = int(white_time // 60), int(white_time % 60)
         b_mins, b_secs = int(black_time // 60), int(black_time % 60)
 
-        #temp rendering, will skew
-        white_time_text = ui_font.render(f"{w_mins:02d}:{w_secs:02d}", True, (255, 255, 255))
-        black_time_text = ui_font.render(f"{b_mins:02d}:{b_secs:02d}", True, (255, 255, 255))
-        canvas.blit(white_time_text, (timer_rect.x + 24, timer_rect.y + 18))
-        canvas.blit(black_time_text, (timer_rect.x + 24, timer_rect.y + 54))
+        if turn == 'white':
+            active_time = white_time    
+        else:
+            active_time = black_time
+
+        text_colour = (190, 180, 200)
+        minutes = int(active_time // 60)
+        seconds = int(active_time % 60)
+
+        time_str = f"{minutes:02d} {seconds:02d}"
+
+        hr_font = pygame.font.Font("fonts/ThaleahFat.ttf", 64)
+
+        iso_hr_text = make_iso_text(time_str, hr_font, text_colour, shear_y = 0.5)
+
+        final_w = iso_hr_text.get_width() // 2
+        final_h = iso_hr_text.get_height() // 2
+        smooth_timer_text = pygame.transform.scale(iso_hr_text, (final_w, final_h))
+
+        clock_screen_centre = (timer_rect.x + 60, timer_rect.y + 76)
+        canvas.blit(smooth_timer_text, smooth_timer_text.get_rect(center = clock_screen_centre))
 
         if hovered_tile is not None:
             hover_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
