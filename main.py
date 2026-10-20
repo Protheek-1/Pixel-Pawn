@@ -500,7 +500,7 @@ while running:
         smooth_timer_text = pygame.transform.scale(iso_hr_text, (final_w, final_h))
 
         clock_screen_centre = (timer_rect.x + 60, timer_rect.y + 76)
-        canvas.blit(smooth_timer_text, smooth_timer_text.get_rect(center = clock_screen_centre))
+        canvas.blit(smooth_timer_text, smooth_timer_text.get_rect(left = clock_screen_centre[0] - 36, top = clock_screen_centre[1] - 35))
 
         if hovered_tile is not None:
             hover_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
