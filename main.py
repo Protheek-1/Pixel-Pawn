@@ -349,7 +349,7 @@ while running:
         if turn == 'white':
             white_time = max(0, white_time - elasped_seconds)
             if white_time <= 0:
-                game_message = "Black wins!"
+                game_message = "Time, Black wins!"
                 game_over = True
                 possible_moves = []
                 selected_tile = None
@@ -357,14 +357,14 @@ while running:
         else:
             black_time = max(0, black_time - elasped_seconds)
             if black_time <= 0:
-                game_message = "White wins!"
+                game_message = "Time, White wins!"
                 game_over = True
                 possible_moves = []
                 selected_tile = None
                 dragging_piece = None
     else:
         last_time = pygame.time.get_ticks() 
-        
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
