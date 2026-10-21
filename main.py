@@ -341,18 +341,30 @@ while running:
     start_hover = start_rect.collidepoint(mx, my)
     setup_hover = setup_rect.collidepoint(mx, my)
 
-    if game_state == "play" and not menu_open:
+    if game_state == "play" and not menu_open and not game_over:
         current_time = pygame.time.get_ticks()
         elasped_seconds = (current_time - last_time) / 1000
         last_time = current_time
 
         if turn == 'white':
             white_time = max(0, white_time - elasped_seconds)
+            if white_time <= 0:
+                game_message = "Black wins!"
+                game_over = True
+                possible_moves = []
+                selected_tile = None
+                dragging_piece = None
         else:
             black_time = max(0, black_time - elasped_seconds)
+            if black_time <= 0:
+                game_message = "White wins!"
+                game_over = True
+                possible_moves = []
+                selected_tile = None
+                dragging_piece = None
     else:
-        last_time = pygame.time.get_ticks()
-
+        last_time = pygame.time.get_ticks() 
+        
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -412,7 +424,7 @@ while running:
                         board_layout[s_row][s_col] = "--"
 
                         if move_is_valid:
-                        # if is_move_legal(selected_tile, hovered_tile):
+
                             board_layout[hovered_tile[0]][hovered_tile[1]] = dragging_piece
                             if selected_tile != hovered_tile:
                                 turn = opposite_color(turn)
@@ -558,6 +570,7 @@ while running:
 
             if dragging_piece is not None and mouse_row == row :
                 sprite = pieces_sprite[dragging_piece]
+                sprite.set_alpha(255)
                 drag_x = mx - (sprite.get_width() // 2)
                 drag_y = my - sprite.get_height() + 7
                 canvas.blit(sprite, (drag_x, drag_y))
@@ -573,10 +586,17 @@ while running:
 
                     if selected_tile == (row, col):
                         render_y -= 10
+
+                    is_white_piece = piece.startswith('w')
+                    if (turn == 'white' and is_white_piece) or (turn == 'black' and not is_white_piece):
+                        sprite.set_alpha(255)
+                    else:
+                        sprite.set_alpha(190)
                     canvas.blit(sprite, (render_x, render_y))
 
             if dragging_piece is not None and mouse_row >= 7:
                 sprite = pieces_sprite[dragging_piece]
+                sprite.set_alpha(255)
                 drag_x = mx - (sprite.get_width() // 2)
                 drag_y = my - sprite.get_height() + 7
                 canvas.blit(sprite, (drag_x, drag_y))
