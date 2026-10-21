@@ -28,7 +28,9 @@ dragging_piece = None
 game_message = ""
 game_over = False
 possible_moves = []
-
+menu_open = False
+menu_slide_x = canvas.get_width()
+menu_rect = pygame.Rect(canvas.get_width() - 35, 15, 30, 25)
 
 # text stuff
 title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 80)
@@ -331,7 +333,7 @@ def make_iso_text(text_string, font, text_color, shear_y = 0.5):
 while running:
     # get mouse position cause were doing the virtual canvas thing and mouse pos is messed up
 
-    if game_state == 'play':
+    if game_state == 'play' and not menu_open:
         current_time = pygame.time.get_ticks()
         elasped_seconds = (current_time - last_time) / 1000
         last_time = current_time
@@ -340,6 +342,8 @@ while running:
             white_time = max(0, white_time - elasped_seconds)
         else:
             black_time = max(0, black_time - elasped_seconds)
+    else:
+        last_time = pygame.time.get_ticks()
 
     raw_mx, raw_my = pygame.mouse.get_pos()
     mx = int(raw_mx * (virtual_w / window_w))
@@ -369,6 +373,13 @@ while running:
                         game_state = "setup"
 
                 if game_state == "play" and not game_over and hovered_tile is not None:
+
+                    if menu_rect.collidepoint(mx, my):
+                        menu_open = not menu_open
+                        continue
+                    if menu_open:
+                        continue
+
                     click_row, click_col = hovered_tile
                     clicked_piece = board_layout[click_row][click_col]
 
@@ -573,6 +584,23 @@ while running:
 
             message_surf = ui_font.render(game_message, True, message_colour)
             canvas.blit(message_surf, (12,12))
+
+        menu_hover = menu_rect.collidepoint(mx, my)
+        line_colour = (238, 220, 130) if menu_hover else (255, 255, 255)
+
+        pygame.draw.line(canvas, line_colour, (menu_rect.x + 5, menu_rect.x + 5), (menu_rect.x + 25, menu_rect.x + 5), 2)
+        pygame.draw.line(canvas, line_colour, (menu_rect.x + 5, menu_rect.x + 12), (menu_rect.x + 25, menu_rect.y + 12), 2)
+        pygame.draw.line(canvas, line_colour, (menu_rect.x + 5, menu_rect.y + 19), (menu_rect.x + 25, menu_rect.y + 19), 2)
+
+        target_panel_x = (canvas.get_width() - 160) if menu_open else canvas.get_width()
+        menu_slide_x += (target_panel_x - menu_slide_x) * 0.2
+        if menu_slide_x < canvas.get_width():
+            panel_surface = pygame.Surface((160, canvas.get_height()), pygame.SRCALPHA)
+            panel_surface.fill((20, 20, 25, 240))
+            pygame.draw.line(panel_surface, (238, 220, 130), (0, 0), (0, canvas.get_height()), 1)
+            panel_title = title_font.render("PAUSED", True, (255, 255, 255))
+            panel_surface.blit(panel_title, panel_title.get_rect(center = (80, 50)))
+            canvas.blit(panel_surface, (int(menu_slide_x), 0))
 
     # draw cursor cross hair rn
     pygame.draw.line(canvas, (255, 255, 255), (mx, my - 4), (mx, my + 4), 1)
