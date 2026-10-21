@@ -341,21 +341,21 @@ while running:
     start_hover = start_rect.collidepoint(mx, my)
     setup_hover = setup_rect.collidepoint(mx, my)
 
+    if game_state == "play" and not menu_open:
+        current_time = pygame.time.get_ticks()
+        elasped_seconds = (current_time - last_time) / 1000
+        last_time = current_time
+
+        if turn == 'white':
+            white_time = max(0, white_time - elasped_seconds)
+        else:
+            black_time = max(0, black_time - elasped_seconds)
+    else:
+        last_time = pygame.time.get_ticks()
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-
-        if game_state == 'play' and not menu_open:
-            current_time = pygame.time.get_ticks()
-            elasped_seconds = (current_time - last_time) / 1000
-            last_time = current_time
-        
-            if turn == 'white':
-                white_time = max(0, white_time - elasped_seconds)
-            else:
-                black_time = max(0, black_time - elasped_seconds)
-        else:
-            last_time = pygame.time.get_ticks()
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
@@ -376,7 +376,9 @@ while running:
                         menu_open = not menu_open
                         continue
                     if menu_open:
-                        continue # this is so that the menu doesnt get in the way of the game
+                        if mx < 480:
+                            menu_open = False
+                        continue 
 
                     if not game_over and hovered_tile is not None:
                         click_row, click_col = hovered_tile
@@ -490,6 +492,7 @@ while running:
         w_mins, w_secs = int(white_time // 60), int(white_time % 60)
         b_mins, b_secs = int(black_time // 60), int(black_time % 60)
 
+
         if turn == 'white':
             active_time = white_time    
         else:
@@ -588,17 +591,19 @@ while running:
         line_colour = (238, 220, 130) if menu_hover else (200, 190, 210)
 
         pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y - 3), (menu_rect.x + 25, menu_rect.y - 3), 2)
-        pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y + 4), (menu_rect.x + 25, menu_rect.y + 4), 2)
-        pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y + 11), (menu_rect.x + 25, menu_rect.y + 11), 2)
+        pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y + 3), (menu_rect.x + 25, menu_rect.y + 3), 2)
+        pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y + 9), (menu_rect.x + 25, menu_rect.y + 9), 2)
 
         target_panel_x = (canvas.get_width() - 160) if menu_open else canvas.get_width()
         menu_slide_x += (target_panel_x - menu_slide_x) * 0.2
         if menu_slide_x < canvas.get_width():
             panel_surface = pygame.Surface((160, canvas.get_height()), pygame.SRCALPHA)
-            panel_surface.fill((20, 20, 25, 240))
+            panel_surface.fill((20, 20, 25, 180))
             pygame.draw.line(panel_surface, (238, 220, 130), (0, 0), (0, canvas.get_height()), 1)
             panel_title = ui_font.render("PAUSED", True, (255, 255, 255))
-            panel_surface.blit(panel_title, panel_title.get_rect(center = (80, 50)))
+            panel_shadow_title = ui_font.render("PAUSED", True, (10, 10, 10))
+            panel_surface.blit(panel_shadow_title, panel_title.get_rect(center = (85, 50)))
+            panel_surface.blit(panel_title, panel_title.get_rect(center = (82, 47)))
             canvas.blit(panel_surface, (int(menu_slide_x), 0))
 
     # draw cursor cross hair rn
