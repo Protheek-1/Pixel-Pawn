@@ -332,19 +332,6 @@ def make_iso_text(text_string, font, text_color, shear_y = 0.5):
 # main loop
 while running:
     # get mouse position cause were doing the virtual canvas thing and mouse pos is messed up
-
-    if game_state == 'play' and not menu_open:
-        current_time = pygame.time.get_ticks()
-        elasped_seconds = (current_time - last_time) / 1000
-        last_time = current_time
-
-        if turn == 'white':
-            white_time = max(0, white_time - elasped_seconds)
-        else:
-            black_time = max(0, black_time - elasped_seconds)
-    else:
-        last_time = pygame.time.get_ticks()
-
     raw_mx, raw_my = pygame.mouse.get_pos()
     mx = int(raw_mx * (virtual_w / window_w))
     my = int(raw_my * (virtual_h / window_h))
@@ -357,6 +344,18 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+
+        if game_state == 'play' and not menu_open:
+            current_time = pygame.time.get_ticks()
+            elasped_seconds = (current_time - last_time) / 1000
+            last_time = current_time
+        
+            if turn == 'white':
+                white_time = max(0, white_time - elasped_seconds)
+            else:
+                black_time = max(0, black_time - elasped_seconds)
+        else:
+            last_time = pygame.time.get_ticks()
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
@@ -372,23 +371,23 @@ while running:
                     elif setup_hover:
                         game_state = "setup"
 
-                if game_state == "play" and not game_over and hovered_tile is not None:
-
+                if game_state == "play":
                     if menu_rect.collidepoint(mx, my):
                         menu_open = not menu_open
                         continue
                     if menu_open:
-                        continue
+                        continue # this is so that the menu doesnt get in the way of the game
 
-                    click_row, click_col = hovered_tile
-                    clicked_piece = board_layout[click_row][click_col]
+                    if not game_over and hovered_tile is not None:
+                        click_row, click_col = hovered_tile
+                        clicked_piece = board_layout[click_row][click_col]
 
-                    if selected_tile is None:  #  all the code for selecting a piece and like moving it
-                        if clicked_piece != "--" and ((turn == 'white' and clicked_piece.startswith('w')) or (turn == 'black' and clicked_piece.startswith('b'))):
-                            selected_tile = hovered_tile
-                            dragging_piece = clicked_piece
-                            possible_moves = get_legal_moves(selected_tile)
-                            board_layout[click_row][click_col] = "--"
+                        if selected_tile is None:  #  all the code for selecting a piece and like moving it
+                            if clicked_piece != "--" and ((turn == 'white' and clicked_piece.startswith('w')) or (turn == 'black' and clicked_piece.startswith('b'))):
+                                selected_tile = hovered_tile
+                                dragging_piece = clicked_piece
+                                possible_moves = get_legal_moves(selected_tile)
+                                board_layout[click_row][click_col] = "--"
 
                 elif game_state == "setup": # code for setup screen but like i havent actually added buttosn so its invisible, spooky
                     if left_arrow_rect.collidepoint(mx, my):
@@ -586,11 +585,11 @@ while running:
             canvas.blit(message_surf, (12,12))
 
         menu_hover = menu_rect.collidepoint(mx, my)
-        line_colour = (238, 220, 130) if menu_hover else (255, 255, 255)
+        line_colour = (238, 220, 130) if menu_hover else (200, 190, 210)
 
-        pygame.draw.line(canvas, line_colour, (menu_rect.x + 5, menu_rect.x + 5), (menu_rect.x + 25, menu_rect.x + 5), 2)
-        pygame.draw.line(canvas, line_colour, (menu_rect.x + 5, menu_rect.x + 12), (menu_rect.x + 25, menu_rect.y + 12), 2)
-        pygame.draw.line(canvas, line_colour, (menu_rect.x + 5, menu_rect.y + 19), (menu_rect.x + 25, menu_rect.y + 19), 2)
+        pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y - 3), (menu_rect.x + 25, menu_rect.y - 3), 2)
+        pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y + 4), (menu_rect.x + 25, menu_rect.y + 4), 2)
+        pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y + 11), (menu_rect.x + 25, menu_rect.y + 11), 2)
 
         target_panel_x = (canvas.get_width() - 160) if menu_open else canvas.get_width()
         menu_slide_x += (target_panel_x - menu_slide_x) * 0.2
@@ -598,7 +597,7 @@ while running:
             panel_surface = pygame.Surface((160, canvas.get_height()), pygame.SRCALPHA)
             panel_surface.fill((20, 20, 25, 240))
             pygame.draw.line(panel_surface, (238, 220, 130), (0, 0), (0, canvas.get_height()), 1)
-            panel_title = title_font.render("PAUSED", True, (255, 255, 255))
+            panel_title = ui_font.render("PAUSED", True, (255, 255, 255))
             panel_surface.blit(panel_title, panel_title.get_rect(center = (80, 50)))
             canvas.blit(panel_surface, (int(menu_slide_x), 0))
 
