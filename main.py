@@ -40,6 +40,11 @@ has_moved_bR_right = False
 pending_promotion = None
 promotion_choices = ['Q', 'R', 'B', 'N']
 promotion_rects = [pygame.Rect(228 + i * 46, 155, 40, 40) for i in range(4)]
+draw_offer = None
+draw_offer_rect = pygame.Rect(495, 90, 130, 35)
+home_button_rect = pygame.Rect(495, 135, 130, 35)
+accept_draw_rect = pygame.Rect(205, 185, 100, 35)
+decline_draw_rect = pygame.Rect(335, 185, 100, 35)
 
 # text stuff
 title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 80)
@@ -401,6 +406,16 @@ while running:
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
+
+                if game_state == "play" and draw_offer is not None:
+                    if accept_draw_rect.collidepoint(mx, my):
+                        game_message = "Draw Agreed"
+                        game_over = True
+                        draw_offer = None
+                    elif decline_draw_rect.collidepoint(mx, my):
+                        draw_offer = None
+                    continue
+
                 if game_state == "title":
                     if start_hover:
                         white_time = time_control_minutes * 60
@@ -444,6 +459,27 @@ while running:
                         menu_open = not menu_open
                         continue
                     if menu_open:
+                        if draw_offer_rect.collidepoint(mx, my):
+                            game_message = "Draw Agreed"
+                            game_over = True
+                            draw_offer = None
+                            menu_open = False
+
+                        elif home_button_rect.collidepoint(mx, my):
+                            game_state = "title"
+                            menu_open = False
+                            draw_offer = None
+                            board_layout[:] = [
+                                ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
+                                ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
+                                ['--', '--', '--', '--', '--', '--', '--', '--'],
+                                ['--', '--', '--', '--', '--', '--', '--', '--'],
+                                ['--', '--', '--', '--', '--', '--', '--', '--'],
+                                ['--', '--', '--', '--', '--', '--', '--', '--'],
+                                ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
+                                ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
+                             ]
+
                         if mx < 480:
                             menu_open = False
                         continue 
@@ -737,6 +773,14 @@ while running:
             panel_shadow_title = ui_font.render("PAUSED", True, (10, 10, 10))
             panel_surface.blit(panel_shadow_title, panel_title.get_rect(center = (85, 50)))
             panel_surface.blit(panel_title, panel_title.get_rect(center = (82, 47)))
+
+            for rect, label in[(draw_offer_rect, "DRAW"), (home_button_rect, "HOME")]:
+                local_rect = rect.move(-480, 0)
+                hovered = rect.collidepoint(mx, my)
+                colour = ((80, 100, 135) if hovered else (42, 42, 58))
+                pygame.draw.rect(panel_surface, colour, local_rect, 0, 5)
+                label_surf = pygame.font.Font("fonts/ThaleahFat.ttf", 32).render(label, True, (255, 255, 255))
+                panel_surface.blit(label_surf, label_surf.get_rect(center = local_rect.center))
             canvas.blit(panel_surface, (int(menu_slide_x), 0))
 
     # draw cursor cross hair rn
