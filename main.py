@@ -37,6 +37,9 @@ has_moved_wR_left = False
 has_moved_wR_right = False
 has_moved_bR_left = False
 has_moved_bR_right = False
+pending_promotion = None
+promotion_choices = ['Q', 'R', 'B', 'N']
+promotion_rects = [pygame.Rect(228 + i * 46, 155, 40, 40) for i in range(4)]
 
 # text stuff
 title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 80)
@@ -179,13 +182,13 @@ def is_piece_move_valid(start_pos, end_pos):
         if 0 < (dx**2 + dy**2) <= 2:
             return True
         if dy == 0 and abs(dx) == 2 and not is_in_check('white' if piece.startswith('w') else 'black'):
-            color = piece[0]
-            if color == 'w' and not has_moved_wK:
+            colour = piece[0]
+            if colour == 'w' and not has_moved_wK:
                 if dx == 2 and not has_moved_wR_right and board_layout[7][5] and board_layout[7][6] == '--':
                     return is_move_legal(start_pos, (7, 5))
                 if dx == -2 and not has_moved_wR_left and board_layout[7][3] == '--' and board_layout[7][2] == '--' and board_layout[7][1] == '--':
                     return is_move_legal(start_pos, (7, 3))
-            elif color == 'b' and not has_moved_bK:
+            elif colour == 'b' and not has_moved_bK:
                 if dx == 2 and not has_moved_bR_right and board_layout[0][5] == '--' and board_layout[0][6] == '--':
                     return is_move_legal(start_pos, (0, 5))
                 if dx == -2 and not has_moved_bR_left and board_layout[0][3] == '--' and board_layout[0][2] == '--' and board_layout[0][1] == '--':
@@ -218,8 +221,8 @@ def is_piece_move_valid(start_pos, end_pos):
     
     return False
 
-def opposite_color(color):
-    return 'black' if color == 'white' else 'white'
+def opposite_colour(colour):
+    return 'black' if colour == 'white' else 'white'
 
 def piece_attacks_square(start_pos, target_pos):
     s_row, s_col = start_pos
@@ -232,10 +235,10 @@ def piece_attacks_square(start_pos, target_pos):
     dx = t_col - s_col
     dy = t_row - s_row
     piece_type = piece[1]
-    color = piece[0]
+    colour = piece[0]
 
     if piece_type == 'P':
-        direction = -1 if color == 'w' else 1
+        direction = -1 if colour == 'w' else 1
         return abs(dx) == 1 and dy == direction
 
     if piece_type == 'N':
@@ -284,7 +287,7 @@ def is_in_check(colour):
     for row in range(8):
         for col in range(8):
             if board_layout[row][col] == king:
-                return is_square_attacked((row, col), opposite_color(colour))
+                return is_square_attacked((row, col), opposite_colour(colour))
     print(f"DEBUG: {king} not found on board!")
     return False
 
@@ -338,9 +341,9 @@ def has_legal_moves(colour):
                         return True
     return False
 
-def make_iso_text(text_string, font, text_color, shear_y = 0.5):
+def make_iso_text(text_string, font, text_colour, shear_y = 0.5):
 
-    flat_timer_text = font.render(text_string, True, text_color)
+    flat_timer_text = font.render(text_string, True, text_colour)
     width, height = flat_timer_text.get_size()
     slant_stretch = int(abs(shear_y) * width)
     new_height = height + slant_stretch + 12
@@ -410,6 +413,32 @@ while running:
                         game_state = "setup"
 
                 if game_state == "play":
+                    
+                    if pending_promotion is not None:
+                        row, col, colour = pending_promotion
+                        for i, choice in enumerate(promotion_choices):
+                            if promotion_rects[i].collidepoint(mx, my):
+                                
+                                board_layout[row][col] = colour + choice
+                                pending_promotion = None
+                                turn = opposite_colour(turn)
+
+                                if is_in_check(turn):
+                                    if not has_legal_moves(turn):
+                                        winner = opposite_colour(turn).upper()
+                                        game_message = f"Checkmate!{winner} wins"
+                                        game_over = True
+                                    else:
+                                        game_message = f"{turn.upper()} is in check"
+                                else:
+                                    if not has_legal_moves(turn):
+                                        game_message = 'Stalemate!'
+                                        game_over = True
+                                    else:
+                                        game_message = ""
+                                break
+                        continue
+                    
                     if menu_rect.collidepoint(mx, my):
                         menu_open = not menu_open
                         continue
@@ -478,9 +507,9 @@ while running:
                             last_move_made = (selected_tile, hovered_tile, dragging_piece)
 
                             if dragging_piece == 'wP' and hovered_tile[0] == 0:
-                                board_layout[hovered_tile[0]][hovered_tile[1]] = 'wQ'
+                                pending_promotion = (target_row, target_col, 'w')
                             elif dragging_piece == 'bP' and hovered_tile[0] == 7:
-                                board_layout[hovered_tile[0]][hovered_tile[1]] = 'bQ'
+                                pending_promotion = (target_row, target_col, 'b')
 
                             if dragging_piece == 'wK': has_moved_wK = True
                             elif dragging_piece == 'bK': has_moved_bK = True
@@ -491,12 +520,12 @@ while running:
                                 if s_col == 0: has_moved_bR_left = True
                                 if s_col == 7: has_moved_bR_right = True
 
-                            if selected_tile != hovered_tile:
-                                turn = opposite_color(turn)
+                            if selected_tile != hovered_tile and pending_promotion is None:
+                                turn = opposite_colour(turn)
 
                                 if is_in_check(turn):
                                     if not has_legal_moves(turn):
-                                        winner = opposite_color(turn).upper()
+                                        winner = opposite_colour(turn).upper()
                                         game_message = f"Checkmate!{winner} wins"
                                         game_over = True
                                     else:
@@ -665,6 +694,21 @@ while running:
                 drag_x = mx - (sprite.get_width() // 2)
                 drag_y = my - sprite.get_height() + 7
                 canvas.blit(sprite, (drag_x, drag_y))
+
+        if pending_promotion is not None:
+            row, col, colour = pending_promotion
+
+            panel_surf = pygame.Surface((210, 62), pygame.SRCALPHA)
+            pygame.draw.rect(panel_surf, (20, 20, 25, 195), (0, 0, 210, 62), 0, 5,)
+            canvas.blit(panel_surf, (215, 144))
+
+            for i, choice in enumerate(promotion_choices):
+                rect = promotion_rects[i]
+                box_colour = (238, 220, 130) if rect.collidepoint(mx, my) else (190, 180, 200)
+                pygame.draw.rect(canvas, box_colour, rect, 2, 5)
+                sprite = pieces_sprite[colour + choice]
+                sprite_rect = sprite.get_rect(center = rect.center).move(0, -8)
+                canvas.blit(sprite, sprite_rect)
 
         if game_message:
             message_colour = ((255, 100, 100) if 'Check' in game_message or 'Wins' in game_message else (238, 220, 130))
