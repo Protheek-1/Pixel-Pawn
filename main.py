@@ -449,15 +449,16 @@ while running:
 
                         board_layout[s_row][s_col] = "--"
 
+                        target_row = hovered_tile[0]
+                        target_col = hovered_tile[1]
+
                         if move_is_valid:
 
-                            if dragging_piece[1] == 'P' and click_col != s_col and board_layout[hovered_tile[0]][hovered_tile[1]] == '--':
-                                board_layout[s_row][click_col] = '--'
+                            if (dragging_piece[1] == 'P' and s_col != target_col and board_layout[target_row][target_col] == '--'):  
+                                board_layout[s_row][target_col] = '--'
 
-                            target_row = hovered_tile[0]
-                            target_col = hovered_tile[1]
-
-                            if dragging_piece[1] == 'wK' and abs(target_col - s_col) == 2:
+                           
+                            if dragging_piece == 'wK' and abs(target_col - s_col) == 2:
                                 if target_col == 6:
                                     board_layout[7][5] = 'wR'
                                     board_layout[7][7] = '--'
@@ -465,7 +466,7 @@ while running:
                                     board_layout[7][3] = 'wR'
                                     board_layout[7][0] = '--'
 
-                            elif dragging_piece[1] == 'bK' and abs(target_col - s_col) == 2:
+                            elif dragging_piece == 'bK' and abs(target_col - s_col) == 2:
                                 if target_col == 6:
                                     board_layout[0][5] = 'bR'
                                     board_layout[0][7] = '--'
@@ -474,6 +475,7 @@ while running:
                                     board_layout[0][0] = '--'
 
                             board_layout[hovered_tile[0]][hovered_tile[1]] = dragging_piece
+                            last_move_made = (selected_tile, hovered_tile, dragging_piece)
 
                             if dragging_piece == 'wP' and hovered_tile[0] == 0:
                                 board_layout[hovered_tile[0]][hovered_tile[1]] = 'wQ'
