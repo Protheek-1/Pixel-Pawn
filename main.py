@@ -77,8 +77,9 @@ board_x = ((320 - board_surf.get_width()) // 2) + 120
 board_y = ((virtual_h - board_surf.get_height()) // 2) + 20
 board_rect = board_surf.get_rect(topleft = (board_x, board_y))
 
-timer_surf = pygame.image.load("graphics/timer.png").convert_alpha()
-timer_rect = timer_surf.get_rect(topleft = (virtual_w // 2 + 55, virtual_h - 355))
+timer_white = pygame.image.load("graphics/timer_white.png").convert_alpha()
+timer_black = pygame.image.load("graphics/timer_black.png").convert_alpha()
+timer_rect = timer_white.get_rect(topleft = (virtual_w // 2 + 55, virtual_h - 355))
 
 # actual board layout
 board_layout = [
@@ -594,7 +595,10 @@ while running:
   
         canvas.blit(bg, (0,0))
         canvas.blit(board_surf, board_rect)
-        canvas.blit(timer_surf, timer_rect)
+        if turn == 'white':
+            canvas.blit(timer_black, timer_rect) # accidentally swapped the file names
+        else:
+            canvas.blit(timer_white, timer_rect)
         w_mins, w_secs = int(white_time // 60), int(white_time % 60)
         b_mins, b_secs = int(black_time // 60), int(black_time % 60)
 
@@ -619,7 +623,7 @@ while running:
         smooth_timer_text = pygame.transform.scale(iso_hr_text, (final_w, final_h))
 
         clock_screen_centre = (timer_rect.x + 60, timer_rect.y + 76)
-        canvas.blit(smooth_timer_text, smooth_timer_text.get_rect(left = clock_screen_centre[0] - 36, top = clock_screen_centre[1] - 35))
+        canvas.blit(smooth_timer_text, smooth_timer_text.get_rect(left = clock_screen_centre[0] - 36, top = clock_screen_centre[1] - 32))
 
         if hovered_tile is not None:
             hover_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
