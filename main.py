@@ -30,7 +30,13 @@ game_over = False
 possible_moves = []
 menu_open = False
 menu_slide_x = canvas.get_width()
-menu_rect = pygame.Rect(canvas.get_width() - 35, 15, 30, 25)
+last_move_made = None
+has_moved_wK = False
+has_moved_bK = False
+has_moved_wR_left = False
+has_moved_wR_right = False
+has_moved_bR_left = False
+has_moved_bR_right = False
 
 # text stuff
 title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 80)
@@ -59,6 +65,7 @@ back_btn_text = ui_font.render("BACK", True, (255, 255, 255))
 back_btn_shadow_text = ui_font.render("BACK", True, (10, 10, 10))
 back_btn_rect = back_btn_text.get_rect(center = (virtual_w // 2, 235))
 
+menu_rect = pygame.Rect(canvas.get_width() - 35, 15, 30, 25)
 
 # stuff on table
 board_base = pygame.image.load("graphics/board.png").convert_alpha()
@@ -160,12 +167,31 @@ def is_piece_move_valid(start_pos, end_pos):
         if dx == 0  and  s_row == start_row and dy == (2 * direction):
             return target == '--' and board_layout[s_row + direction][s_col] == '--'
         if dx**2 == 1 and dy == direction:
-            return target != '--'
+            if target != '--':
+                return True
+            if last_move_made is not None:
+                lm_start, lm_end, lm_piece = last_move_made
+                if lm_piece[1] == 'P' and lm_end == (s_row, s_col + dx) and abs(lm_start[0] - lm_end[0]) == 2:
+                    return True
         return False
 
     elif piece_type == 'K':
-        return 0 < (dx**2 + dy**2) <= 2
-
+        if 0 < (dx**2 + dy**2) <= 2:
+            return True
+        if dy == 0 and abs(dx) == 2 and not is_in_check('white' if piece.startswith('w') else 'black'):
+            color = piece[0]
+            if color == 'w' and not has_moved_wK:
+                if dx == 2 and not has_moved_wR_right and board_layout[7][5] and board_layout[7][6] == '--':
+                    return is_move_legal(start_pos, (7, 5))
+                if dx == -2 and not has_moved_wR_left and board_layout[7][3] == '--' and board_layout[7][2] == '--' and board_layout[7][1] == '--':
+                    return is_move_legal(start_pos, (7, 3))
+            elif color == 'b' and not has_moved_bK:
+                if dx == 2 and not has_moved_bR_right and board_layout[0][5] == '--' and board_layout[0][6] == '--':
+                    return is_move_legal(start_pos, (0, 5))
+                if dx == -2 and not has_moved_bR_left and board_layout[0][3] == '--' and board_layout[0][2] == '--' and board_layout[0][1] == '--':
+                    return is_move_legal(start_pos, (0, 3))
+        return False
+    
     elif piece_type in ('R', 'B', 'Q'):
         is_rook_move = (dx * dy == 0)
         is_bishop_move = (dx**2 == dy**2)
@@ -425,7 +451,44 @@ while running:
 
                         if move_is_valid:
 
+                            if dragging_piece[1] == 'P' and click_col != s_col and board_layout[hovered_tile[0]][hovered_tile[1]] == '--':
+                                board_layout[s_row][click_col] = '--'
+
+                            target_row = hovered_tile[0]
+                            target_col = hovered_tile[1]
+
+                            if dragging_piece[1] == 'wK' and abs(target_col - s_col) == 2:
+                                if target_col == 6:
+                                    board_layout[7][5] = 'wR'
+                                    board_layout[7][7] = '--'
+                                elif target_col == 2:
+                                    board_layout[7][3] = 'wR'
+                                    board_layout[7][0] = '--'
+
+                            elif dragging_piece[1] == 'bK' and abs(target_col - s_col) == 2:
+                                if target_col == 6:
+                                    board_layout[0][5] = 'bR'
+                                    board_layout[0][7] = '--'
+                                elif target_col == 2:
+                                    board_layout[0][3] = 'bR'
+                                    board_layout[0][0] = '--'
+
                             board_layout[hovered_tile[0]][hovered_tile[1]] = dragging_piece
+
+                            if dragging_piece == 'wP' and hovered_tile[0] == 0:
+                                board_layout[hovered_tile[0]][hovered_tile[1]] = 'wQ'
+                            elif dragging_piece == 'bP' and hovered_tile[0] == 7:
+                                board_layout[hovered_tile[0]][hovered_tile[1]] = 'bQ'
+
+                            if dragging_piece == 'wK': has_moved_wK = True
+                            elif dragging_piece == 'bK': has_moved_bK = True
+                            elif dragging_piece == 'wR' and s_row == 7:
+                                if s_col == 0: has_moved_wR_left = True
+                                if s_col == 7: has_moved_wR_right = True
+                            elif dragging_piece == 'bR' and s_row == 0:
+                                if s_col == 0: has_moved_bR_left = True
+                                if s_col == 7: has_moved_bR_right = True
+
                             if selected_tile != hovered_tile:
                                 turn = opposite_color(turn)
 
