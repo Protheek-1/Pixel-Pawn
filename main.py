@@ -45,6 +45,8 @@ draw_offer_rect = pygame.Rect(495, 90, 130, 35)
 home_button_rect = pygame.Rect(495, 135, 130, 35)
 accept_draw_rect = pygame.Rect(205, 185, 100, 35)
 decline_draw_rect = pygame.Rect(335, 185, 100, 35)
+inkwell_surf = pygame.image.load("graphics/inkwell.png").convert_alpha()
+inkwell_rect = inkwell_surf.get_rect(center = (virtual_w // 2 + 15, virtual_h - 340))
 
 # text stuff
 title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 80)
@@ -639,6 +641,8 @@ while running:
         b_mins, b_secs = int(black_time // 60), int(black_time % 60)
 
 
+        canvas.blit(inkwell_surf, inkwell_rect)
+
         if turn == 'white':
             active_time = white_time    
         else:
@@ -725,7 +729,7 @@ while running:
                     if (turn == 'white' and is_white_piece) or (turn == 'black' and not is_white_piece):
                         sprite.set_alpha(255)
                     else:
-                        sprite.set_alpha(190)
+                        sprite.set_alpha(210)
                     canvas.blit(sprite, (render_x, render_y))
 
             if dragging_piece is not None and mouse_row >= 7:
