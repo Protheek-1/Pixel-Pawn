@@ -47,6 +47,12 @@ accept_draw_rect = pygame.Rect(205, 185, 100, 35)
 decline_draw_rect = pygame.Rect(335, 185, 100, 35)
 inkwell_surf = pygame.image.load("graphics/inkwell.png").convert_alpha()
 inkwell_rect = inkwell_surf.get_rect(center = (virtual_w // 2 + 15, virtual_h - 340))
+AI_DIFFICULTIES = {
+    "EASY": 2,
+    "MEDIUM": 3,
+    "HARD": 5
+}
+AI_DIFFICULTY = "MEDIUM"
 
 # text stuff
 title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 80)
@@ -192,7 +198,7 @@ def is_piece_move_valid(start_pos, end_pos):
         if dy == 0 and abs(dx) == 2 and not is_in_check('white' if piece.startswith('w') else 'black'):
             colour = piece[0]
             if colour == 'w' and not has_moved_wK:
-                if dx == 2 and not has_moved_wR_right and board_layout[7][5] and board_layout[7][6] == '--':
+                if dx == 2 and not has_moved_wR_right and board_layout[7][5] == '--'and board_layout[7][6] == '--':
                     return is_move_legal(start_pos, (7, 5))
                 if dx == -2 and not has_moved_wR_left and board_layout[7][3] == '--' and board_layout[7][2] == '--' and board_layout[7][1] == '--':
                     return is_move_legal(start_pos, (7, 3))
@@ -348,6 +354,164 @@ def has_legal_moves(colour):
                     if is_move_legal(start_pos, (end_row, end_col)):
                         return True
     return False
+
+AI_PIECE_VALUES = {
+    'P': 100,
+    'N': 320,
+    'B': 330,
+    'R': 500,
+    'Q': 900,
+    'K': 0,
+}
+
+AI_STATE_NAMES = [
+    "last_move_made",
+    "has_moved_wK",
+    "has_moved_bK",
+    "has_moved_wR_left",
+    "has_moved_wR_right",
+    "has_moved_bR_left",
+    "has_moved_bR_right",
+]
+
+def save_search_state():
+    return (
+        [row[:] for row in board_layout], {name: globals()[name] for name in AI_STATE_NAMES}
+    )
+
+def restore_search_state(state):
+    saved_board, saved_variables = state
+    board_layout[:] = [row[:] for row in saved_board]
+    for name, value in saved_variables.items():
+        globals()[name] = value
+        
+def evaluate_position():
+    score = 0  # positive favours white. negative favours black
+    for row in board_layout:
+        for piece in row:
+            if piece != "--":
+                continue
+            value = AI_PIECE_VALUES[piece[1]]
+            if piece.startswith('b'):
+                score += value
+            else:
+                score -= value
+    return score
+
+def generate_ai_moves(colour):
+    prefix = 'w' if colour == 'white' else 'b'
+    moves = []
+    for row in range(8):
+        for col in range(8):
+            piece = board_layout[row][col]
+            if not piece.startswith(prefix):
+                continue
+            start = (row, col)
+            for end_row in range(8):
+                for end_col in range(8):
+                    end = (end_row, end_col)
+                    if is_move_legal(start, end):
+                        target = board_layout[end_row][end_col]
+                        capture_value = (AI_PIECE_VALUES[target[1]] if target != "--" else 0)
+                        moves.append((start, end, capture_value))
+    moves.sort(key = lambda move: move[2], reverse = True)
+    return [(start, end) for start, end, _ in moves]
+
+def apply_search_move(start, end):
+    s_row, s_col = start
+    e_row, e_col = end
+    piece = board_layout[s_row][s_col]
+    if (
+        piece[1] == 'P' and
+        s_col != e_col and
+        board_layout[e_row][e_col] == '--'
+    ):
+        board_layout[s_row][s_col] = '--'
+    if piece[1] == 'K' and abs(e_col - s_col) == 2:
+        if piece.startswith('w'):
+            rook_row = 7#
+        else:
+            rook_row = 0
+        if e_col == 6:
+            board_layout[rook_row][5] = (
+                'wR' if piece.startswith('w') else 'bR'
+            )
+            board_layout[rook_row][7] = '--'
+        else:
+            board_layout[rook_row][3] = (
+                'wR' if piece.startswith('w') else 'bR'
+            )
+            board_layout[rook_row][0] = '--'
+    board_layout[s_row][s_col] = '--'
+    board_layout[e_row][e_col] = piece
+
+    if piece == 'wK':
+        globals()['has_moved_wK'] = True
+    elif piece == 'bK':
+        globals()['has_moved_bK'] = True
+    elif piece == 'wR' and s_row == 7:
+        if s_col == 0:
+            globals()['has_moved_wR_left'] = True
+        elif s_col == 7:
+            globals()['has_moved_wR_right'] = True
+    elif piece == 'bR' and s_row == 0:
+        if s_col == 0:
+            globals()['has_moved_bR_left'] = True
+        elif s_col == 7:
+            globals()['has_moved_bR_right'] = True
+    captured = None
+    if piece[1] == 'P' and e_row in (0, 7):
+        board_layout[e_row][e_col] = (
+            'wQ' if piece.startswith('w') else 'bQ'
+        )
+    globals()['last_move_made'] = (start, end, piece)
+
+def minimax(depth, alpha, beta, colour):
+    if depth == 0:
+        return evaluate_position(), None
+    moves = generate_ai_moves(colour)
+    if not moves:
+        if is_in_check(colour):
+            if colour == 'white':
+                return 100000 + depth, None
+            return -100000 - depth, None
+        return 0, None
+    best_move = None
+
+    if colour == 'black':
+        best_score = float('-inf')
+        for start, end in moves:
+            state = save_search_state()
+            apply_search_move(start, end)
+            score, _ = minimax(depth - 1, alpha, beta, 'white')
+            restore_search_state(state)
+            if score > best_score:
+                best_score = score
+                best_move = (start, end)
+            alpha = max(alpha, best_score)
+            if beta <= alpha:
+                break
+        return best_score, best_move
+    else:
+        best_score = float('inf')
+        for start, end in moves:
+            state = save_search_state()
+            apply_search_move(start, end)
+            score, _ = minimax(depth - 1, alpha, beta, 'black')
+            restore_search_state(state)
+            if score < best_score:
+                best_score = score
+                best_move = (start, end)
+            beta = min(beta, best_score)
+            if beta <= alpha:
+                break
+        return best_score, best_move
+
+def find_best_move(colour='black', depth=None):
+    if depth is None:
+        depth = AI_DIFFICULTIES[AI_DIFFICULTY]
+    _, best_move = minimax(depth, float('-inf'), float('inf'), colour)
+    return best_move
 
 def make_iso_text(text_string, font, text_colour, shear_y = 0.5):
 
