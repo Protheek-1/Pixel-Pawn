@@ -384,12 +384,14 @@ def restore_search_state(state):
     board_layout[:] = [row[:] for row in saved_board]
     for name, value in saved_variables.items():
         globals()[name] = value
-        
+
 def evaluate_position():
     score = 0  # positive favours white. negative favours black
     for row in board_layout:
         for piece in row:
             if piece != "--":
+                continue
+            if piece == '--':
                 continue
             value = AI_PIECE_VALUES[piece[1]]
             if piece.startswith('b'):
@@ -565,6 +567,32 @@ while running:
                 dragging_piece = None
     else:
         last_time = pygame.time.get_ticks() 
+
+    if (
+        game_state == "play"
+        and turn == "black"
+        and not game_over
+        and not menu_open
+        and pending_promotion is None
+    ):
+        ai_move = find_best_move('black')
+        if ai_move is not None:
+            start_pos, end_pos = ai_move
+            apply_search_move(start_pos, end_pos)
+            turn = "white"
+
+            if is_in_check("white"):
+                if not has_legal_moves("white"):
+                    game_message = "Checkmate! Black wins"
+                    game_over = True
+                else:
+                    game_message = "White is in check"
+            elif not has_legal_moves("white"):
+                game_message = "Stalemate!"
+                game_over = True
+            else:
+                game_message = ""
+                
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
