@@ -2,6 +2,7 @@ import pygame
 import sys # not needed rn but maybe at some point
 import random
 import math
+import time
 
 pygame.init()
 
@@ -53,6 +54,9 @@ AI_DIFFICULTIES = {
     "HARD": 5
 }
 AI_DIFFICULTY = "MEDIUM"
+player_move_start = time.time()
+bot_think_start = None
+bot_wait_time = 0
 
 # text stuff
 title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 80)
@@ -387,17 +391,35 @@ def restore_search_state(state):
 
 def evaluate_position():
     score = 0  # positive favours white. negative favours black
-    for row in board_layout:
-        for piece in row:
-            if piece != "--":
-                continue
+    values = AI_PIECE_VALUES
+
+    for row in range(8):
+        for col in range(8):
+            piece = board_layout[row][col]
             if piece == '--':
                 continue
-            value = AI_PIECE_VALUES[piece[1]]
-            if piece.startswith('b'):
-                score += value
-            else:
-                score -= value
+            colour = piece[0]
+            piece_type = piece[1]
+            sign = 1 if colour == 'b' else -1
+            score += sign * values[piece_type]
+            centre_distance = abs(3.5 - col) + abs(3.5 - row)
+            if piece_type in ('P', 'N', 'B', 'Q'):
+                score += sign * int((7 - centre_distance)*(3 if piece_type == 'P' else 2))
+
+            if piece_type == 'P':
+                advancement = (row - 1) if colour == 'b' else (6 - row)
+                score += sign * advancement * 8
+
+            if piece_type in ('N', 'B'):
+                starting_row = 0 if colour == 'b' else 7
+                if row != starting_row:
+                    score += sign * 20
+
+            if piece_type == 'K':
+                home_row = 0 if colour == 'b' else 7
+                if row == home_row and col in (2, 6):
+                    score += sign * 40
+
     return score
 
 def generate_ai_moves(colour):
@@ -575,24 +597,28 @@ while running:
         and not menu_open
         and pending_promotion is None
     ):
-        ai_move = find_best_move('black')
-        if ai_move is not None:
-            start_pos, end_pos = ai_move
-            apply_search_move(start_pos, end_pos)
-            turn = "white"
+        
 
-            if is_in_check("white"):
-                if not has_legal_moves("white"):
-                    game_message = "Checkmate! Black wins"
-                    game_over = True
-                else:
-                    game_message = "White is in check"
-            elif not has_legal_moves("white"):
-                game_message = "Stalemate!"
-                game_over = True
-            else:
-                game_message = ""
-                
+        if turn == "black" and bot_think_start is not None:
+            if time.time() - bot_think_start >= bot_wait_time:
+                ai_move = find_best_move('black')
+                if ai_move is not None:
+                    start_pos, end_pos = ai_move
+                    apply_search_move(start_pos, end_pos)
+                    turn = "white"
+                    if is_in_check("white"):
+                        if not has_legal_moves("white"):
+                            game_message = "Checkmate! Black wins"
+                            game_over = True
+                        else:
+                            game_message = "White is in check"
+                    elif not has_legal_moves("white"):
+                        game_message = "Stalemate!"
+                        game_over = True
+                    else:
+                                    game_message = ""
+                player_move_start = time.time()
+                bot_think_start = None
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -752,6 +778,11 @@ while running:
                                 if s_col == 7: has_moved_bR_right = True
 
                             if selected_tile != hovered_tile and pending_promotion is None:
+
+                                player_move_time = time.time() - player_move_start
+                                bot_wait_time = player_move_time * random.uniform(0.7, 1.2)
+                                bot_think_start = time.time()
+
                                 turn = opposite_colour(turn)
 
                                 if is_in_check(turn):
