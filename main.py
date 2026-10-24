@@ -885,7 +885,7 @@ while running:
                     dragging_piece = None
                     selected_tile = None
            
-    canvas.fill((42, 42, 58))
+    canvas.blit(pygame.image.load("graphics/chess_bg.png"), (0,0))
 
     if game_state == "title": # basically done
        
