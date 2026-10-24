@@ -3,6 +3,7 @@ import sys # not needed rn but maybe at some point
 import random
 import math
 import time
+import asyncio
 
 class SearchTimeOut(Exception):
     pass
@@ -645,541 +646,551 @@ def get_position_key(colour):
 
 
 # main loop
-while running:
-    # get mouse position cause were doing the virtual canvas thing and mouse pos is messed up
-    raw_mx, raw_my = pygame.mouse.get_pos()
-    mx = int(raw_mx * (virtual_w / window_w))
-    my = int(raw_my * (virtual_h / window_h))
+async def main():
+    global AI_DIFFICULTY, back_btn_text, black_time, bot_think_start, bot_wait_time
+    global check_flash_colour, check_flash_start, dragging_piece, draw_offer, game_message
+    global game_over, game_state, has_moved_bK, has_moved_bR_left, has_moved_bR_right
+    global has_moved_wK, has_moved_wR_left, has_moved_wR_right, last_move_made, last_time
+    global menu_open, menu_slide_x, pending_promotion, player_move_start, possible_moves
+    global selected_tile, time_control_minutes, turn, white_time
+    global running
+    
+    while running:
+        # get mouse position cause were doing the virtual canvas thing and mouse pos is messed up
+        raw_mx, raw_my = pygame.mouse.get_pos()
+        mx = int(raw_mx * (virtual_w / window_w))
+        my = int(raw_my * (virtual_h / window_h))
 
-    hovered_tile = iso_to_grid(mx, my)
+        hovered_tile = iso_to_grid(mx, my)
 
-    start_hover = start_rect.collidepoint(mx, my)
-    setup_hover = setup_rect.collidepoint(mx, my)
+        start_hover = start_rect.collidepoint(mx, my)
+        setup_hover = setup_rect.collidepoint(mx, my)
 
-    if game_state == "play" and not menu_open and not game_over:
-        current_time = pygame.time.get_ticks()
-        elasped_seconds = (current_time - last_time) / 1000
-        last_time = current_time
+        if game_state == "play" and not menu_open and not game_over:
+            current_time = pygame.time.get_ticks()
+            elasped_seconds = (current_time - last_time) / 1000
+            last_time = current_time
 
-        if turn == 'white':
-            white_time = max(0, white_time - elasped_seconds)
-            if white_time <= 0:
-                game_message = "Time, Black wins!"
-                game_over = True
-                possible_moves = []
-                selected_tile = None
-                dragging_piece = None
+            if turn == 'white':
+                white_time = max(0, white_time - elasped_seconds)
+                if white_time <= 0:
+                    game_message = "Time, Black wins!"
+                    game_over = True
+                    possible_moves = []
+                    selected_tile = None
+                    dragging_piece = None
+            else:
+                black_time = max(0, black_time - elasped_seconds)
+                if black_time <= 0:
+                    game_message = "Time, White wins!"
+                    game_over = True
+                    possible_moves = []
+                    selected_tile = None
+                    dragging_piece = None
         else:
-            black_time = max(0, black_time - elasped_seconds)
-            if black_time <= 0:
-                game_message = "Time, White wins!"
-                game_over = True
-                possible_moves = []
-                selected_tile = None
-                dragging_piece = None
-    else:
-        last_time = pygame.time.get_ticks() 
+            last_time = pygame.time.get_ticks() 
 
-    if (
-        game_state == "play"
-        and turn == "black"
-        and not game_over
-        and not menu_open
-        and pending_promotion is None
-    ):
-        
+        if (
+            game_state == "play"
+            and turn == "black"
+            and not game_over
+            and not menu_open
+            and pending_promotion is None
+        ):
+            
 
-        if turn == "black" and bot_think_start is not None:
-            if time.time() - bot_think_start >= bot_wait_time:
-                ai_start_time = time.time()
-                ai_move = find_best_move('black')
-                ai_think_time = time.time() - ai_start_time
-                if AI_DIFFICULTY == "HARD":
-                    black_time = max(0, black_time - ai_think_time)
-                last_time = pygame.time.get_ticks()
-                if ai_move is not None:
-                    start_pos, end_pos = ai_move
-                    apply_search_move(start_pos, end_pos)
-                    turn = "white"
-                    if is_in_check("white"):
-                        if not has_legal_moves("white"):
-                            game_message = "Checkmate! Black wins"
+            if turn == "black" and bot_think_start is not None:
+                if time.time() - bot_think_start >= bot_wait_time:
+                    ai_start_time = time.time()
+                    ai_move = find_best_move('black')
+                    ai_think_time = time.time() - ai_start_time
+                    if AI_DIFFICULTY == "HARD":
+                        black_time = max(0, black_time - ai_think_time)
+                    last_time = pygame.time.get_ticks()
+                    if ai_move is not None:
+                        start_pos, end_pos = ai_move
+                        apply_search_move(start_pos, end_pos)
+                        turn = "white"
+                        if is_in_check("white"):
+                            if not has_legal_moves("white"):
+                                game_message = "Checkmate! Black wins"
+                                game_over = True
+                            else:
+                                game_message = ""
+                        elif not has_legal_moves("white"):
+                            game_message = "Stalemate!"
                             game_over = True
                         else:
-                            game_message = ""
-                    elif not has_legal_moves("white"):
-                        game_message = "Stalemate!"
-                        game_over = True
-                    else:
-                                    game_message = ""
-                player_move_start = time.time()
-                bot_think_start = None
-
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:
-
-                if game_state == "play" and draw_offer is not None:
-                    if accept_draw_rect.collidepoint(mx, my):
-                        game_message = "Draw Agreed"
-                        game_over = True
-                        draw_offer = None
-                    elif decline_draw_rect.collidepoint(mx, my):
-                        draw_offer = None
-                    continue
-
-                if game_state == "title":
-                    if start_hover:
-                        white_time = time_control_minutes * 60
-                        black_time = time_control_minutes * 60
-                        turn = 'white'
-                        last_time = pygame.time.get_ticks()
-                        game_message = ""
-                        game_over = False
-                        game_state = "play"
-                    elif setup_hover:
-                        game_state = "setup"
-
-                if game_state == "play":
-                    
-                    if pending_promotion is not None:
-                        row, col, colour = pending_promotion
-                        for i, choice in enumerate(promotion_choices):
-                            if promotion_rects[i].collidepoint(mx, my):
-                                
-                                board_layout[row][col] = colour + choice
-                                pending_promotion = None
-                                turn = opposite_colour(turn)
-
-                                if is_in_check(turn):
-                                    if not has_legal_moves(turn):
-                                        winner = opposite_colour(turn).upper()
-                                        game_message = f"Checkmate!{winner} wins"
-                                        game_over = True
-                                    else:
-                                        game_message = f""
-                                else:
-                                    if not has_legal_moves(turn):
-                                        game_message = 'Stalemate!'
-                                        game_over = True
-                                    else:
                                         game_message = ""
-                                if not game_over and record_position():
-                                    game_message = "Draw by Repetition!"
-                                    game_over = True
-                                break
-                        continue
-                    
-                    if menu_rect.collidepoint(mx, my):
-                        menu_open = not menu_open
-                        continue
-                    if menu_open:
-                        if draw_offer_rect.collidepoint(mx, my):
+                    player_move_start = time.time()
+                    bot_think_start = None
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+
+                    if game_state == "play" and draw_offer is not None:
+                        if accept_draw_rect.collidepoint(mx, my):
                             game_message = "Draw Agreed"
                             game_over = True
                             draw_offer = None
-                            menu_open = False
-
-                        elif home_button_rect.collidepoint(mx, my):
-                            game_state = "title"
-                            menu_open = False
+                        elif decline_draw_rect.collidepoint(mx, my):
                             draw_offer = None
-                            board_layout[:] = [
-                                ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
-                                ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
-                                ['--', '--', '--', '--', '--', '--', '--', '--'],
-                                ['--', '--', '--', '--', '--', '--', '--', '--'],
-                                ['--', '--', '--', '--', '--', '--', '--', '--'],
-                                ['--', '--', '--', '--', '--', '--', '--', '--'],
-                                ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
-                                ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
-                             ]
+                        continue
 
-                        if mx < 480:
-                            menu_open = False
-                        continue 
+                    if game_state == "title":
+                        if start_hover:
+                            white_time = time_control_minutes * 60
+                            black_time = time_control_minutes * 60
+                            turn = 'white'
+                            last_time = pygame.time.get_ticks()
+                            game_message = ""
+                            game_over = False
+                            game_state = "play"
+                        elif setup_hover:
+                            game_state = "setup"
 
-                    if not game_over and hovered_tile is not None and turn == 'white':
-                        click_row, click_col = hovered_tile
-                        clicked_piece = board_layout[click_row][click_col]
+                    if game_state == "play":
+                        
+                        if pending_promotion is not None:
+                            row, col, colour = pending_promotion
+                            for i, choice in enumerate(promotion_choices):
+                                if promotion_rects[i].collidepoint(mx, my):
+                                    
+                                    board_layout[row][col] = colour + choice
+                                    pending_promotion = None
+                                    turn = opposite_colour(turn)
 
-                        if selected_tile is None:  #  all the code for selecting a piece and like moving it
-                            if clicked_piece != "--" and ((turn == 'white' and clicked_piece.startswith('w')) or (turn == 'black' and clicked_piece.startswith('b'))):
-                                selected_tile = hovered_tile
-                                dragging_piece = clicked_piece
-                                possible_moves = get_legal_moves(selected_tile)
-                                board_layout[click_row][click_col] = "--"
-
-                elif game_state == "setup": # code for setup screen but like i havent actually added buttosn so its invisible, spooky
-                    if left_arrow_rect.collidepoint(mx, my):
-                        time_control_minutes = max(1, time_control_minutes - 1)
-                    elif right_arrow_rect.collidepoint(mx, my):
-                        time_control_minutes = min(60, time_control_minutes + 1)
-                    elif back_btn_rect.collidepoint(mx, my):
-                        game_state = "title"
-                    else:
-                        for name, rect in difficulty_buttons.items():
-                            if rect.collidepoint(mx, my):
-                                AI_DIFFICULTY = name
-                                break
-
-        if event.type == pygame.MOUSEBUTTONUP:
-            if event.button == 1 and game_state == "play" and turn == 'white':
-                if dragging_piece is not None:
-                    if hovered_tile is not None:
-                        s_row, s_col = selected_tile
-                        board_layout[s_row][s_col] = dragging_piece
-                        possible_moves = []
-
-                        move_is_valid = is_move_legal(selected_tile, hovered_tile)
-
-                        board_layout[s_row][s_col] = "--"
-
-                        target_row = hovered_tile[0]
-                        target_col = hovered_tile[1]
-
-                        if move_is_valid:
-
-                            if (dragging_piece[1] == 'P' and s_col != target_col and board_layout[target_row][target_col] == '--'):  
-                                board_layout[s_row][target_col] = '--'
-
-                           
-                            if dragging_piece == 'wK' and abs(target_col - s_col) == 2:
-                                if target_col == 6:
-                                    board_layout[7][5] = 'wR'
-                                    board_layout[7][7] = '--'
-                                elif target_col == 2:
-                                    board_layout[7][3] = 'wR'
-                                    board_layout[7][0] = '--'
-
-                            elif dragging_piece == 'bK' and abs(target_col - s_col) == 2:
-                                if target_col == 6:
-                                    board_layout[0][5] = 'bR'
-                                    board_layout[0][7] = '--'
-                                elif target_col == 2:
-                                    board_layout[0][3] = 'bR'
-                                    board_layout[0][0] = '--'
-
-                            board_layout[hovered_tile[0]][hovered_tile[1]] = dragging_piece
-                            last_move_made = (selected_tile, hovered_tile, dragging_piece)
-
-                            if dragging_piece == 'wP' and hovered_tile[0] == 0:
-                                pending_promotion = (target_row, target_col, 'w')
-                            elif dragging_piece == 'bP' and hovered_tile[0] == 7:
-                                pending_promotion = (target_row, target_col, 'b')
-
-                            if dragging_piece == 'wK': has_moved_wK = True
-                            elif dragging_piece == 'bK': has_moved_bK = True
-                            elif dragging_piece == 'wR' and s_row == 7:
-                                if s_col == 0: has_moved_wR_left = True
-                                if s_col == 7: has_moved_wR_right = True
-                            elif dragging_piece == 'bR' and s_row == 0:
-                                if s_col == 0: has_moved_bR_left = True
-                                if s_col == 7: has_moved_bR_right = True
-
-                            if selected_tile != hovered_tile and pending_promotion is None:
-
-                                player_move_time = time.time() - player_move_start
-                                if AI_DIFFICULTY == "HARD":
-                                    bot_wait_time = 0
-                                else:
-                                    bot_wait_time = player_move_time * random.uniform(0.7, 1.2)
-                                bot_think_start = time.time()
-
-                                turn = opposite_colour(turn)
-
-                                if is_in_check(turn):
-                                    if not has_legal_moves(turn):
-                                        winner = opposite_colour(turn).upper()
-                                        game_message = f"Checkmate!{winner} wins"
-                                        game_over = True
+                                    if is_in_check(turn):
+                                        if not has_legal_moves(turn):
+                                            winner = opposite_colour(turn).upper()
+                                            game_message = f"Checkmate!{winner} wins"
+                                            game_over = True
+                                        else:
+                                            game_message = f""
                                     else:
-                                        game_message = f""
-
-                                else:
-                                    if not has_legal_moves(turn):
-                                        game_message = 'Stalemate!'
+                                        if not has_legal_moves(turn):
+                                            game_message = 'Stalemate!'
+                                            game_over = True
+                                        else:
+                                            game_message = ""
+                                    if not game_over and record_position():
+                                        game_message = "Draw by Repetition!"
                                         game_over = True
+                                    break
+                            continue
+                        
+                        if menu_rect.collidepoint(mx, my):
+                            menu_open = not menu_open
+                            continue
+                        if menu_open:
+                            if draw_offer_rect.collidepoint(mx, my):
+                                game_message = "Draw Agreed"
+                                game_over = True
+                                draw_offer = None
+                                menu_open = False
+
+                            elif home_button_rect.collidepoint(mx, my):
+                                game_state = "title"
+                                menu_open = False
+                                draw_offer = None
+                                board_layout[:] = [
+                                    ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
+                                    ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
+                                    ['--', '--', '--', '--', '--', '--', '--', '--'],
+                                    ['--', '--', '--', '--', '--', '--', '--', '--'],
+                                    ['--', '--', '--', '--', '--', '--', '--', '--'],
+                                    ['--', '--', '--', '--', '--', '--', '--', '--'],
+                                    ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
+                                    ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
+                                ]
+
+                            if mx < 480:
+                                menu_open = False
+                            continue 
+
+                        if not game_over and hovered_tile is not None and turn == 'white':
+                            click_row, click_col = hovered_tile
+                            clicked_piece = board_layout[click_row][click_col]
+
+                            if selected_tile is None:  #  all the code for selecting a piece and like moving it
+                                if clicked_piece != "--" and ((turn == 'white' and clicked_piece.startswith('w')) or (turn == 'black' and clicked_piece.startswith('b'))):
+                                    selected_tile = hovered_tile
+                                    dragging_piece = clicked_piece
+                                    possible_moves = get_legal_moves(selected_tile)
+                                    board_layout[click_row][click_col] = "--"
+
+                    elif game_state == "setup": # code for setup screen but like i havent actually added buttosn so its invisible, spooky
+                        if left_arrow_rect.collidepoint(mx, my):
+                            time_control_minutes = max(1, time_control_minutes - 1)
+                        elif right_arrow_rect.collidepoint(mx, my):
+                            time_control_minutes = min(60, time_control_minutes + 1)
+                        elif back_btn_rect.collidepoint(mx, my):
+                            game_state = "title"
+                        else:
+                            for name, rect in difficulty_buttons.items():
+                                if rect.collidepoint(mx, my):
+                                    AI_DIFFICULTY = name
+                                    break
+
+            if event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1 and game_state == "play" and turn == 'white':
+                    if dragging_piece is not None:
+                        if hovered_tile is not None:
+                            s_row, s_col = selected_tile
+                            board_layout[s_row][s_col] = dragging_piece
+                            possible_moves = []
+
+                            move_is_valid = is_move_legal(selected_tile, hovered_tile)
+
+                            board_layout[s_row][s_col] = "--"
+
+                            target_row = hovered_tile[0]
+                            target_col = hovered_tile[1]
+
+                            if move_is_valid:
+
+                                if (dragging_piece[1] == 'P' and s_col != target_col and board_layout[target_row][target_col] == '--'):  
+                                    board_layout[s_row][target_col] = '--'
+
+                            
+                                if dragging_piece == 'wK' and abs(target_col - s_col) == 2:
+                                    if target_col == 6:
+                                        board_layout[7][5] = 'wR'
+                                        board_layout[7][7] = '--'
+                                    elif target_col == 2:
+                                        board_layout[7][3] = 'wR'
+                                        board_layout[7][0] = '--'
+
+                                elif dragging_piece == 'bK' and abs(target_col - s_col) == 2:
+                                    if target_col == 6:
+                                        board_layout[0][5] = 'bR'
+                                        board_layout[0][7] = '--'
+                                    elif target_col == 2:
+                                        board_layout[0][3] = 'bR'
+                                        board_layout[0][0] = '--'
+
+                                board_layout[hovered_tile[0]][hovered_tile[1]] = dragging_piece
+                                last_move_made = (selected_tile, hovered_tile, dragging_piece)
+
+                                if dragging_piece == 'wP' and hovered_tile[0] == 0:
+                                    pending_promotion = (target_row, target_col, 'w')
+                                elif dragging_piece == 'bP' and hovered_tile[0] == 7:
+                                    pending_promotion = (target_row, target_col, 'b')
+
+                                if dragging_piece == 'wK': has_moved_wK = True
+                                elif dragging_piece == 'bK': has_moved_bK = True
+                                elif dragging_piece == 'wR' and s_row == 7:
+                                    if s_col == 0: has_moved_wR_left = True
+                                    if s_col == 7: has_moved_wR_right = True
+                                elif dragging_piece == 'bR' and s_row == 0:
+                                    if s_col == 0: has_moved_bR_left = True
+                                    if s_col == 7: has_moved_bR_right = True
+
+                                if selected_tile != hovered_tile and pending_promotion is None:
+
+                                    player_move_time = time.time() - player_move_start
+                                    if AI_DIFFICULTY == "HARD":
+                                        bot_wait_time = 0
                                     else:
-                                        game_message = ""
-                                if not game_over and record_position():
-                                    game_message = "Draw by Repetition!"
-                                    game_over = True
+                                        bot_wait_time = player_move_time * random.uniform(0.7, 1.2)
+                                    bot_think_start = time.time()
+
+                                    turn = opposite_colour(turn)
+
+                                    if is_in_check(turn):
+                                        if not has_legal_moves(turn):
+                                            winner = opposite_colour(turn).upper()
+                                            game_message = f"Checkmate!{winner} wins"
+                                            game_over = True
+                                        else:
+                                            game_message = f""
+
+                                    else:
+                                        if not has_legal_moves(turn):
+                                            game_message = 'Stalemate!'
+                                            game_over = True
+                                        else:
+                                            game_message = ""
+                                    if not game_over and record_position():
+                                        game_message = "Draw by Repetition!"
+                                        game_over = True
+                            else:
+                                board_layout[selected_tile[0]][selected_tile[1]] = dragging_piece
+                                if is_piece_move_valid(selected_tile, hovered_tile):
+                                    state = save_search_state()
+                                    try:
+                                        apply_search_move(selected_tile, hovered_tile)
+                                        if is_in_check(turn):
+                                            check_flash_start = pygame.time.get_ticks()
+                                            check_flash_colour = (turn)
+                                    finally:
+                                        restore_search_state(state)
+
                         else:
                             board_layout[selected_tile[0]][selected_tile[1]] = dragging_piece
-                            if is_piece_move_valid(selected_tile, hovered_tile):
-                                state = save_search_state()
-                                try:
-                                    apply_search_move(selected_tile, hovered_tile)
-                                    if is_in_check(turn):
-                                        check_flash_start = pygame.time.get_ticks()
-                                        check_flash_colour = (turn)
-                                finally:
-                                    restore_search_state(state)
+                        dragging_piece = None
+                        selected_tile = None
+            
+        canvas.blit(pygame.image.load("graphics/title_bg.png"), (0,0))
 
-                    else:
-                        board_layout[selected_tile[0]][selected_tile[1]] = dragging_piece
-                    dragging_piece = None
-                    selected_tile = None
-           
-    canvas.blit(pygame.image.load("graphics/title_bg.png"), (0,0))
+        if game_state == "title": # basically done
+        
+            canvas.blit(shadow_text, title_rect.move(4, 4))
+            canvas.blit(title_text, title_rect)
 
-    if game_state == "title": # basically done
-       
-        canvas.blit(shadow_text, title_rect.move(4, 4))
-        canvas.blit(title_text, title_rect)
+            canvas.blit(setup_shadow_text, setup_rect.move(3,3))
+            canvas.blit(start_shadow_text, start_rect.move(3,3))
 
-        canvas.blit(setup_shadow_text, setup_rect.move(3,3))
-        canvas.blit(start_shadow_text, start_rect.move(3,3))
-
-        if start_hover:
-            box_rect = start_rect.inflate(16, 12)
-            canvas.blit(start_hover_text, start_hover_rect)
-        else:
-            box_rect = start_rect.inflate(10, 6)
-            canvas.blit(start_text, start_rect)
-
-        if setup_hover:
-            box_rect = setup_rect.inflate(16, 12)
-            canvas.blit(setup_hover_text, setup_hover_rect)
-        else:
-            box_rect = setup_rect.inflate(10, 6)
-            canvas.blit(setup_text, setup_rect)
-
-    if game_state == "setup": # TODO: Add setup screen
-        setup_title = title_font.render("TIME CONTROL", True, (255, 255, 255))
-        setup_title_shadow = title_font.render("TIME CONTROL", True, (10, 10, 10))
-        setup_title_rect = setup_title.get_rect(center = (virtual_w // 2 + 10, 70))
-        canvas.blit(setup_title_shadow, setup_title_rect.move(4, 4))
-        canvas.blit(setup_title, setup_title_rect)
-
-        mins_text = ui_font.render(f'{time_control_minutes}Min', True, (255, 255, 255))
-        mines_shadow_text = ui_font.render(f'{time_control_minutes}Min', True, (10, 10, 10))
-        mins_rect = mins_text.get_rect(center = (virtual_w // 2, 140))
-        canvas.blit(mines_shadow_text, mins_rect.move(3, 3))
-        canvas.blit(mins_text, mins_rect)
-
-        left_arrow_text = ui_font.render('<', True, (255, 255, 255) if not left_arrow_rect.collidepoint(mx, my) else (238, 220, 130))
-        right_arrow_text = ui_font.render('>', True, (255, 255, 255) if not right_arrow_rect.collidepoint(mx, my) else (238, 220, 130))
-        back_btn_text = ui_font.render('BACK', True, (255, 255, 255) if not back_btn_rect.collidepoint(mx, my) else (238, 220, 130))
-
-        canvas.blit(left_arrow_text, left_arrow_text.get_rect(center = left_arrow_rect.center))
-        canvas.blit(right_arrow_text, right_arrow_text.get_rect(center = right_arrow_rect.center))
-
-        difficulty_title = ui_font.render("DIFFICULTY", True, (255, 255, 255))
-        difficulty_title_shadow = ui_font.render("DIFFICULTY", True, (10, 10, 10))
-        difficulty_rect = difficulty_title.get_rect(center = (virtual_w // 2, 190))
-        canvas.blit(difficulty_title_shadow, difficulty_rect.move(3, 3))
-        canvas.blit(difficulty_title, difficulty_rect)
-
-        for name, rect in difficulty_buttons.items():
-            selected = name == AI_DIFFICULTY
-            hovered = rect.collidepoint(mx, my)
-
-            if selected:
-                colour = (120, 100, 55)
-            elif hovered:
-                colour = (80, 100, 135)
+            if start_hover:
+                box_rect = start_rect.inflate(16, 12)
+                canvas.blit(start_hover_text, start_hover_rect)
             else:
-                colour = (42, 42, 58)
+                box_rect = start_rect.inflate(10, 6)
+                canvas.blit(start_text, start_rect)
 
-            pygame.draw.rect(canvas, colour, rect, 0, border_radius=4)
+            if setup_hover:
+                box_rect = setup_rect.inflate(16, 12)
+                canvas.blit(setup_hover_text, setup_hover_rect)
+            else:
+                box_rect = setup_rect.inflate(10, 6)
+                canvas.blit(setup_text, setup_rect)
 
-            pygame.draw.rect(canvas, (238, 220, 130) if selected else (190, 180, 200), rect, 2, border_radius=4)
-            label = ui_font.render(name, True, (255, 255, 255))
-            canvas.blit(label, label.get_rect(center = rect.center))
+        if game_state == "setup": # TODO: Add setup screen
+            setup_title = title_font.render("TIME CONTROL", True, (255, 255, 255))
+            setup_title_shadow = title_font.render("TIME CONTROL", True, (10, 10, 10))
+            setup_title_rect = setup_title.get_rect(center = (virtual_w // 2 + 10, 70))
+            canvas.blit(setup_title_shadow, setup_title_rect.move(4, 4))
+            canvas.blit(setup_title, setup_title_rect)
 
-        canvas.blit(back_btn_shadow_text, back_btn_rect.move(3,3))
-        canvas.blit(back_btn_text, back_btn_text.get_rect(center = back_btn_rect.center))
-       
-    if game_state == "play":
-  
-        canvas.blit(bg, (0,0))
-        canvas.blit(board_surf, board_rect)
-        if turn == 'white':
-            canvas.blit(timer_black, timer_rect) # accidentally swapped the file names
-        else:
-            canvas.blit(timer_white, timer_rect)
-        w_mins, w_secs = int(white_time // 60), int(white_time % 60)
-        b_mins, b_secs = int(black_time // 60), int(black_time % 60)
+            mins_text = ui_font.render(f'{time_control_minutes}Min', True, (255, 255, 255))
+            mines_shadow_text = ui_font.render(f'{time_control_minutes}Min', True, (10, 10, 10))
+            mins_rect = mins_text.get_rect(center = (virtual_w // 2, 140))
+            canvas.blit(mines_shadow_text, mins_rect.move(3, 3))
+            canvas.blit(mins_text, mins_rect)
 
+            left_arrow_text = ui_font.render('<', True, (255, 255, 255) if not left_arrow_rect.collidepoint(mx, my) else (238, 220, 130))
+            right_arrow_text = ui_font.render('>', True, (255, 255, 255) if not right_arrow_rect.collidepoint(mx, my) else (238, 220, 130))
+            back_btn_text = ui_font.render('BACK', True, (255, 255, 255) if not back_btn_rect.collidepoint(mx, my) else (238, 220, 130))
 
-        canvas.blit(inkwell_surf, inkwell_rect)
+            canvas.blit(left_arrow_text, left_arrow_text.get_rect(center = left_arrow_rect.center))
+            canvas.blit(right_arrow_text, right_arrow_text.get_rect(center = right_arrow_rect.center))
 
-        if turn == 'white':
-            active_time = white_time    
-        else:
-            active_time = black_time
+            difficulty_title = ui_font.render("DIFFICULTY", True, (255, 255, 255))
+            difficulty_title_shadow = ui_font.render("DIFFICULTY", True, (10, 10, 10))
+            difficulty_rect = difficulty_title.get_rect(center = (virtual_w // 2, 190))
+            canvas.blit(difficulty_title_shadow, difficulty_rect.move(3, 3))
+            canvas.blit(difficulty_title, difficulty_rect)
 
-        text_colour = (190, 180, 200)
-        minutes = int(active_time // 60)
-        seconds = int(active_time % 60)
+            for name, rect in difficulty_buttons.items():
+                selected = name == AI_DIFFICULTY
+                hovered = rect.collidepoint(mx, my)
 
-        time_str = f"{minutes:02d} {seconds:02d}"
+                if selected:
+                    colour = (120, 100, 55)
+                elif hovered:
+                    colour = (80, 100, 135)
+                else:
+                    colour = (42, 42, 58)
 
-        hr_font = pygame.font.Font("fonts/ThaleahFat.ttf", 64)
+                pygame.draw.rect(canvas, colour, rect, 0, border_radius=4)
 
-        iso_hr_text = make_iso_text(time_str, hr_font, text_colour, shear_y = 0.5)
+                pygame.draw.rect(canvas, (238, 220, 130) if selected else (190, 180, 200), rect, 2, border_radius=4)
+                label = ui_font.render(name, True, (255, 255, 255))
+                canvas.blit(label, label.get_rect(center = rect.center))
 
-        final_w = iso_hr_text.get_width() // 2
-        final_h = iso_hr_text.get_height() // 2
-        smooth_timer_text = pygame.transform.scale(iso_hr_text, (final_w, final_h))
+            canvas.blit(back_btn_shadow_text, back_btn_rect.move(3,3))
+            canvas.blit(back_btn_text, back_btn_text.get_rect(center = back_btn_rect.center))
+        
+        if game_state == "play":
+    
+            canvas.blit(bg, (0,0))
+            canvas.blit(board_surf, board_rect)
+            if turn == 'white':
+                canvas.blit(timer_black, timer_rect) # accidentally swapped the file names
+            else:
+                canvas.blit(timer_white, timer_rect)
+            w_mins, w_secs = int(white_time // 60), int(white_time % 60)
+            b_mins, b_secs = int(black_time // 60), int(black_time % 60)
 
-        clock_screen_centre = (timer_rect.x + 60, timer_rect.y + 76)
-        canvas.blit(smooth_timer_text, smooth_timer_text.get_rect(left = clock_screen_centre[0] - 36, top = clock_screen_centre[1] - 32))
+            canvas.blit(inkwell_surf, inkwell_rect)
 
-        if hovered_tile is not None:
-            hover_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
-            pygame.draw.polygon(hover_surf, (255, 235, 150, 80), [(32, 0), (64, 16), (32, 32), (0, 16)])
-            h_row, h_col = hovered_tile
-            iso_x, iso_y = grid_to_iso(h_row, h_col)
-            canvas.blit(hover_surf, (iso_x - 34, iso_y - 15))
+            if turn == 'white':
+                active_time = white_time    
+            else:
+                active_time = black_time
 
-        if selected_tile is not None:
-            select_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
-            pygame.draw.polygon(select_surf, (100, 149, 237, 100), [(32, 0), (64, 16), (32, 32), (0, 16)])
-            s_row, s_col = selected_tile
-            iso_x, iso_y = grid_to_iso(s_row, s_col)
-            canvas.blit(select_surf, (iso_x - 34, iso_y - 15))
+            text_colour = (190, 180, 200)
+            minutes = int(active_time // 60)
+            seconds = int(active_time % 60)
 
-        shadow_surf = pygame.Surface((15,8), pygame.SRCALPHA)
-        pygame.draw.ellipse(shadow_surf, (20, 15, 10, 90), (0,0,15,8))
-        shadow_surf = pygame.transform.scale_by(shadow_surf, 2)
+            time_str = f"{minutes:02d} {seconds:02d}"
 
-        mouse_grid = iso_to_grid(mx, my)
-        mouse_row = mouse_grid[0] if mouse_grid is not None else -1
+            hr_font = pygame.font.Font("fonts/ThaleahFat.ttf", 64)
 
-        for move_row, move_col in possible_moves:
-                    iso_x, iso_y = grid_to_iso(move_row, move_col)
-                    canvas.blit(select_surf, (iso_x - 34, iso_y - 15))
+            iso_hr_text = make_iso_text(time_str, hr_font, text_colour, shear_y = 0.5)
 
-        for row in range(8):
-            for col in range(8):
-                piece = board_layout[row][col]
-                if piece != "--":
-                    base_x, base_y = grid_to_iso(row, col)
-                    canvas.blit(shadow_surf, (base_x - 16, base_y - 7))
+            final_w = iso_hr_text.get_width() // 2
+            final_h = iso_hr_text.get_height() // 2
+            smooth_timer_text = pygame.transform.scale(iso_hr_text, (final_w, final_h))
 
-        if dragging_piece is not None:
+            clock_screen_centre = (timer_rect.x + 60, timer_rect.y + 76)
+            canvas.blit(smooth_timer_text, smooth_timer_text.get_rect(left = clock_screen_centre[0] - 36, top = clock_screen_centre[1] - 32))
+
+            if hovered_tile is not None:
+                hover_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
+                pygame.draw.polygon(hover_surf, (255, 235, 150, 80), [(32, 0), (64, 16), (32, 32), (0, 16)])
+                h_row, h_col = hovered_tile
+                iso_x, iso_y = grid_to_iso(h_row, h_col)
+                canvas.blit(hover_surf, (iso_x - 34, iso_y - 15))
+
+            if selected_tile is not None:
+                select_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
+                pygame.draw.polygon(select_surf, (100, 149, 237, 100), [(32, 0), (64, 16), (32, 32), (0, 16)])
+                s_row, s_col = selected_tile
+                iso_x, iso_y = grid_to_iso(s_row, s_col)
+                canvas.blit(select_surf, (iso_x - 34, iso_y - 15))
+
+            shadow_surf = pygame.Surface((15,8), pygame.SRCALPHA)
+            pygame.draw.ellipse(shadow_surf, (20, 15, 10, 90), (0,0,15,8))
+            shadow_surf = pygame.transform.scale_by(shadow_surf, 2)
+
+            mouse_grid = iso_to_grid(mx, my)
+            mouse_row = mouse_grid[0] if mouse_grid is not None else -1
+
+            for move_row, move_col in possible_moves:
+                        iso_x, iso_y = grid_to_iso(move_row, move_col)
+                        canvas.blit(select_surf, (iso_x - 34, iso_y - 15))
+
+            for row in range(8):
+                for col in range(8):
+                    piece = board_layout[row][col]
+                    if piece != "--":
+                        base_x, base_y = grid_to_iso(row, col)
+                        canvas.blit(shadow_surf, (base_x - 16, base_y - 7))
+
+            if dragging_piece is not None:
+                        sprite = pieces_sprite[dragging_piece]
+                        drag_x = mx - (sprite.get_width() // 2)
+                        drag_y = my - sprite.get_height() + 7
+                        canvas.blit(shadow_surf, (drag_x - 5, drag_y + 60))
+                        canvas.blit(sprite, (drag_x, drag_y))
+
+            for row in range(8):
+
+                if dragging_piece is not None and mouse_row == row :
                     sprite = pieces_sprite[dragging_piece]
+                    sprite.set_alpha(255)
                     drag_x = mx - (sprite.get_width() // 2)
                     drag_y = my - sprite.get_height() + 7
-                    canvas.blit(shadow_surf, (drag_x - 5, drag_y + 60))
                     canvas.blit(sprite, (drag_x, drag_y))
 
-        for row in range(8):
+                for col in range(8):
+                    piece = board_layout[row][col]
 
-            if dragging_piece is not None and mouse_row == row :
-                sprite = pieces_sprite[dragging_piece]
-                sprite.set_alpha(255)
-                drag_x = mx - (sprite.get_width() // 2)
-                drag_y = my - sprite.get_height() + 7
-                canvas.blit(sprite, (drag_x, drag_y))
+                    if piece != "--":
+                        base_x, base_y = grid_to_iso(row, col)
+                        now = pygame.time.get_ticks()
+                        flash_active = (
+                            check_flash_start is not None
+                            and now - check_flash_start < CHECK_FLASH_DURATION
+                        )
+                        sprite = pieces_sprite[piece]
+                        if piece == 'wK':
+                            if flash_active and check_flash_colour == 'white':
+                                sprite = white_king_check
+                            elif is_in_check('white'):
+                                sprite = white_king_check
+                        elif piece == 'bK':
+                            if flash_active and check_flash_colour == 'black':
+                                sprite = black_king_check
+                            elif is_in_check('black'):
+                                sprite = black_king_check
+                            
+                        render_x = base_x - (sprite.get_width() // 2)
+                        if sprite is white_king_check or sprite is black_king_check:
+                            render_x -= 1
+                        render_y = base_y - sprite.get_height() + 7 
 
-            for col in range(8):
-                piece = board_layout[row][col]
+                        if selected_tile == (row, col):
+                            render_y -= 10
 
-                if piece != "--":
-                    base_x, base_y = grid_to_iso(row, col)
-                    now = pygame.time.get_ticks()
-                    flash_active = (
-                        check_flash_start is not None
-                        and now - check_flash_start < CHECK_FLASH_DURATION
-                    )
-                    sprite = pieces_sprite[piece]
-                    if piece == 'wK':
-                        if flash_active and check_flash_colour == 'white':
-                            sprite = white_king_check
-                        elif is_in_check('white'):
-                            sprite = white_king_check
-                    elif piece == 'bK':
-                        if flash_active and check_flash_colour == 'black':
-                            sprite = black_king_check
-                        elif is_in_check('black'):
-                            sprite = black_king_check
-                        
-                    render_x = base_x - (sprite.get_width() // 2)
-                    if sprite is white_king_check or sprite is black_king_check:
-                        render_x -= 1
-                    render_y = base_y - sprite.get_height() + 7 
+                        is_white_piece = piece.startswith('w')
+                        if (turn == 'white' and is_white_piece) or (turn == 'black' and not is_white_piece):
+                            sprite.set_alpha(255)
+                        else:
+                            sprite.set_alpha(210)
+                        canvas.blit(sprite, (render_x, render_y))
 
-                    if selected_tile == (row, col):
-                        render_y -= 10
+                if dragging_piece is not None and mouse_row >= 7:
+                    sprite = pieces_sprite[dragging_piece]
+                    sprite.set_alpha(255)
+                    drag_x = mx - (sprite.get_width() // 2)
+                    drag_y = my - sprite.get_height() + 7
+                    canvas.blit(sprite, (drag_x, drag_y))
 
-                    is_white_piece = piece.startswith('w')
-                    if (turn == 'white' and is_white_piece) or (turn == 'black' and not is_white_piece):
-                        sprite.set_alpha(255)
-                    else:
-                        sprite.set_alpha(210)
-                    canvas.blit(sprite, (render_x, render_y))
+            if pending_promotion is not None:
+                row, col, colour = pending_promotion
 
-            if dragging_piece is not None and mouse_row >= 7:
-                sprite = pieces_sprite[dragging_piece]
-                sprite.set_alpha(255)
-                drag_x = mx - (sprite.get_width() // 2)
-                drag_y = my - sprite.get_height() + 7
-                canvas.blit(sprite, (drag_x, drag_y))
+                panel_surf = pygame.Surface((210, 62), pygame.SRCALPHA)
+                pygame.draw.rect(panel_surf, (20, 20, 25, 195), (0, 0, 210, 62), 0, 5,)
+                canvas.blit(panel_surf, (215, 144))
 
-        if pending_promotion is not None:
-            row, col, colour = pending_promotion
+                for i, choice in enumerate(promotion_choices):
+                    rect = promotion_rects[i]
+                    box_colour = (238, 220, 130) if rect.collidepoint(mx, my) else (190, 180, 200)
+                    pygame.draw.rect(canvas, box_colour, rect, 2, 5)
+                    sprite = pieces_sprite[colour + choice]
+                    sprite_rect = sprite.get_rect(center = rect.center).move(0, -8)
+                    canvas.blit(sprite, sprite_rect)
 
-            panel_surf = pygame.Surface((210, 62), pygame.SRCALPHA)
-            pygame.draw.rect(panel_surf, (20, 20, 25, 195), (0, 0, 210, 62), 0, 5,)
-            canvas.blit(panel_surf, (215, 144))
+            if game_message:
+                message_colour = ((255, 100, 100) if 'Check' in game_message or 'Wins' in game_message else (238, 220, 130))
 
-            for i, choice in enumerate(promotion_choices):
-                rect = promotion_rects[i]
-                box_colour = (238, 220, 130) if rect.collidepoint(mx, my) else (190, 180, 200)
-                pygame.draw.rect(canvas, box_colour, rect, 2, 5)
-                sprite = pieces_sprite[colour + choice]
-                sprite_rect = sprite.get_rect(center = rect.center).move(0, -8)
-                canvas.blit(sprite, sprite_rect)
+                message_surf = ui_font.render(game_message, True, message_colour)
+                canvas.blit(message_surf, (12,12))
 
-        if game_message:
-            message_colour = ((255, 100, 100) if 'Check' in game_message or 'Wins' in game_message else (238, 220, 130))
+            menu_hover = menu_rect.collidepoint(mx, my)
+            line_colour = (238, 220, 130) if menu_hover else (200, 190, 210)
 
-            message_surf = ui_font.render(game_message, True, message_colour)
-            canvas.blit(message_surf, (12,12))
+            pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y - 3), (menu_rect.x + 25, menu_rect.y - 3), 2)
+            pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y + 3), (menu_rect.x + 25, menu_rect.y + 3), 2)
+            pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y + 9), (menu_rect.x + 25, menu_rect.y + 9), 2)
 
-        menu_hover = menu_rect.collidepoint(mx, my)
-        line_colour = (238, 220, 130) if menu_hover else (200, 190, 210)
+            target_panel_x = (canvas.get_width() - 160) if menu_open else canvas.get_width()
+            menu_slide_x += (target_panel_x - menu_slide_x) * 0.2
+            if menu_slide_x < canvas.get_width():
+                panel_surface = pygame.Surface((160, canvas.get_height()), pygame.SRCALPHA)
+                panel_surface.fill((20, 20, 25, 180))
+                pygame.draw.line(panel_surface, (238, 220, 130), (0, 0), (0, canvas.get_height()), 1)
+                panel_title = ui_font.render("PAUSED", True, (255, 255, 255))
+                panel_shadow_title = ui_font.render("PAUSED", True, (10, 10, 10))
+                panel_surface.blit(panel_shadow_title, panel_title.get_rect(center = (85, 50)))
+                panel_surface.blit(panel_title, panel_title.get_rect(center = (82, 47)))
 
-        pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y - 3), (menu_rect.x + 25, menu_rect.y - 3), 2)
-        pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y + 3), (menu_rect.x + 25, menu_rect.y + 3), 2)
-        pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y + 9), (menu_rect.x + 25, menu_rect.y + 9), 2)
+                for rect, label in[(draw_offer_rect, "DRAW"), (home_button_rect, "HOME")]:
+                    local_rect = rect.move(-480, 0)
+                    hovered = rect.collidepoint(mx, my)
+                    colour = ((80, 100, 135) if hovered else (42, 42, 58))
+                    pygame.draw.rect(panel_surface, colour, local_rect, 0, 5)
+                    label_surf = pygame.font.Font("fonts/ThaleahFat.ttf", 32).render(label, True, (255, 255, 255))
+                    panel_surface.blit(label_surf, label_surf.get_rect(center = local_rect.center))
+                canvas.blit(panel_surface, (int(menu_slide_x), 0))
 
-        target_panel_x = (canvas.get_width() - 160) if menu_open else canvas.get_width()
-        menu_slide_x += (target_panel_x - menu_slide_x) * 0.2
-        if menu_slide_x < canvas.get_width():
-            panel_surface = pygame.Surface((160, canvas.get_height()), pygame.SRCALPHA)
-            panel_surface.fill((20, 20, 25, 180))
-            pygame.draw.line(panel_surface, (238, 220, 130), (0, 0), (0, canvas.get_height()), 1)
-            panel_title = ui_font.render("PAUSED", True, (255, 255, 255))
-            panel_shadow_title = ui_font.render("PAUSED", True, (10, 10, 10))
-            panel_surface.blit(panel_shadow_title, panel_title.get_rect(center = (85, 50)))
-            panel_surface.blit(panel_title, panel_title.get_rect(center = (82, 47)))
+        # draw cursor cross hair rn
+        pygame.draw.line(canvas, (255, 255, 255), (mx, my - 4), (mx, my + 4), 1)
+        pygame.draw.line(canvas, (255, 255, 255), (mx - 4, my), (mx + 4, my), 1)
+        # want to make it like expand when hovering a piece or maybe hoding a piece or smthn
 
-            for rect, label in[(draw_offer_rect, "DRAW"), (home_button_rect, "HOME")]:
-                local_rect = rect.move(-480, 0)
-                hovered = rect.collidepoint(mx, my)
-                colour = ((80, 100, 135) if hovered else (42, 42, 58))
-                pygame.draw.rect(panel_surface, colour, local_rect, 0, 5)
-                label_surf = pygame.font.Font("fonts/ThaleahFat.ttf", 32).render(label, True, (255, 255, 255))
-                panel_surface.blit(label_surf, label_surf.get_rect(center = local_rect.center))
-            canvas.blit(panel_surface, (int(menu_slide_x), 0))
+        pygame.transform.scale(canvas, (window_w, window_h), window)
 
-    # draw cursor cross hair rn
-    pygame.draw.line(canvas, (255, 255, 255), (mx, my - 4), (mx, my + 4), 1)
-    pygame.draw.line(canvas, (255, 255, 255), (mx - 4, my), (mx + 4, my), 1)
-    # want to make it like expand when hovering a piece or maybe hoding a piece or smthn
+        pygame.display.update()
+        clock.tick(120)
+        await asyncio.sleep(0)
 
-    pygame.transform.scale(canvas, (window_w, window_h), window)
-
-    pygame.display.update()
-    clock.tick(120)
-
+asyncio.run(main())
 pygame.quit()
 
