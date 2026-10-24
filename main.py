@@ -57,6 +57,12 @@ AI_DIFFICULTY = "MEDIUM"
 player_move_start = time.time()
 bot_think_start = None
 bot_wait_time = 0
+difficulty_buttons = {
+    "Easy": pygame.Rect(500, 350, 120, 40),
+    "Medium": pygame.Rect(630, 350, 120, 40),
+    "Hard": pygame.Rect(760, 350, 120, 40),
+}
+
 
 # text stuff
 title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 80)
