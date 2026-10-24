@@ -802,7 +802,7 @@ while running:
                             menu_open = False
                         continue 
 
-                    if not game_over and hovered_tile is not None:
+                    if not game_over and hovered_tile is not None and turn == 'white':
                         click_row, click_col = hovered_tile
                         clicked_piece = board_layout[click_row][click_col]
 
@@ -827,7 +827,7 @@ while running:
                                 break
 
         if event.type == pygame.MOUSEBUTTONUP:
-            if event.button == 1 and game_state == "play":
+            if event.button == 1 and game_state == "play" and turn == 'white':
                 if dragging_piece is not None:
                     if hovered_tile is not None:
                         s_row, s_col = selected_tile
