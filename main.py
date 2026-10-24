@@ -62,6 +62,9 @@ difficulty_buttons = {
     "MEDIUM": pygame.Rect(270, 230, 100, 35),
     "HARD": pygame.Rect(380, 230, 80, 35)
 }
+check_flash_start = None
+check_flash_colour = None
+CHECK_FLASH_DURATION = 500
 
 
 # text stuff
@@ -103,6 +106,9 @@ board_rect = board_surf.get_rect(topleft = (board_x, board_y))
 timer_white = pygame.image.load("graphics/timer_white.png").convert_alpha()
 timer_black = pygame.image.load("graphics/timer_black.png").convert_alpha()
 timer_rect = timer_white.get_rect(topleft = (virtual_w // 2 + 55, virtual_h - 355))
+
+white_king_check = pygame.transform.scale_by(pygame.image.load("graphics/wK_check.png").convert_alpha(), 2)   
+black_king_check = pygame.transform.scale_by(pygame.image.load("graphics/bK_check.png").convert_alpha(), 2)
 
 # actual board layout
 board_layout = [
@@ -663,7 +669,7 @@ while running:
                             game_message = "Checkmate! Black wins"
                             game_over = True
                         else:
-                            game_message = "White is in check"
+                            game_message = ""
                     elif not has_legal_moves("white"):
                         game_message = "Stalemate!"
                         game_over = True
@@ -717,7 +723,7 @@ while running:
                                         game_message = f"Checkmate!{winner} wins"
                                         game_over = True
                                     else:
-                                        game_message = f"{turn.upper()} is in check"
+                                        game_message = f""
                                 else:
                                     if not has_legal_moves(turn):
                                         game_message = 'Stalemate!'
@@ -840,7 +846,7 @@ while running:
                             if selected_tile != hovered_tile and pending_promotion is None:
 
                                 player_move_time = time.time() - player_move_start
-                                bot_wait_time = player_move_time * random.uniform(0.1, 0.2) # testing, change back later
+                                bot_wait_time = player_move_time * random.uniform(0.7, 1.2) # testing, change back later
                                 bot_think_start = time.time()
 
                                 turn = opposite_colour(turn)
@@ -851,7 +857,7 @@ while running:
                                         game_message = f"Checkmate!{winner} wins"
                                         game_over = True
                                     else:
-                                        game_message = f"{turn.upper()} is in check"
+                                        game_message = f""
 
                                 else:
                                     if not has_legal_moves(turn):
@@ -864,6 +870,16 @@ while running:
                                     game_over = True
                         else:
                             board_layout[selected_tile[0]][selected_tile[1]] = dragging_piece
+                            if is_piece_move_valid(selected_tile, hovered_tile):
+                                state = save_search_state()
+                                try:
+                                    apply_search_move(selected_tile, hovered_tile)
+                                    if is_in_check(turn):
+                                        check_flash_start = pygame.time.get_ticks()
+                                        check_flash_colour = (turn)
+                                finally:
+                                    restore_search_state(state)
+
                     else:
                         board_layout[selected_tile[0]][selected_tile[1]] = dragging_piece
                     dragging_piece = None
@@ -1028,8 +1044,26 @@ while running:
 
                 if piece != "--":
                     base_x, base_y = grid_to_iso(row, col)
+                    now = pygame.time.get_ticks()
+                    flash_active = (
+                        check_flash_start is not None
+                        and now - check_flash_start < CHECK_FLASH_DURATION
+                    )
                     sprite = pieces_sprite[piece]
+                    if piece == 'wK':
+                        if flash_active and check_flash_colour == 'white':
+                            sprite = white_king_check
+                        elif is_in_check('white'):
+                            sprite = white_king_check
+                    elif piece == 'bK':
+                        if flash_active and check_flash_colour == 'black':
+                            sprite = black_king_check
+                        elif is_in_check('black'):
+                            sprite = black_king_check
+                        
                     render_x = base_x - (sprite.get_width() // 2)
+                    if sprite is white_king_check or sprite is black_king_check:
+                        render_x -= 1
                     render_y = base_y - sprite.get_height() + 7 
 
                     if selected_tile == (row, col):
