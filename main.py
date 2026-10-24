@@ -58,9 +58,9 @@ player_move_start = time.time()
 bot_think_start = None
 bot_wait_time = 0
 difficulty_buttons = {
-    "Easy": pygame.Rect(500, 350, 120, 40),
-    "Medium": pygame.Rect(630, 350, 120, 40),
-    "Hard": pygame.Rect(760, 350, 120, 40),
+    "EASY": pygame.Rect(180, 230, 80, 35),
+    "MEDIUM": pygame.Rect(270, 230, 100, 35),
+    "HARD": pygame.Rect(380, 230, 80, 35)
 }
 
 
@@ -84,12 +84,12 @@ setup_hover_text = ui_font.render("> SETUP <", True, (238, 220, 130))
 setup_rect = setup_text.get_rect(center = (virtual_w // 2 + 60, 225))
 setup_hover_rect = setup_rect.move(-18, 0)
 
-left_arrow_rect = pygame.Rect(virtual_w // 2 - 90, 150, 30, 30)
-right_arrow_rect = pygame.Rect(virtual_w // 2 + 60, 148, 30, 30)
+left_arrow_rect = pygame.Rect(virtual_w // 2 - 90, 125, 30, 30)
+right_arrow_rect = pygame.Rect(virtual_w // 2 + 60, 123, 30, 30)
 
 back_btn_text = ui_font.render("BACK", True, (255, 255, 255))
 back_btn_shadow_text = ui_font.render("BACK", True, (10, 10, 10))
-back_btn_rect = back_btn_text.get_rect(center = (virtual_w // 2, 235))
+back_btn_rect = back_btn_text.get_rect(center = (virtual_w // 2, 305))
 
 menu_rect = pygame.Rect(canvas.get_width() - 35, 15, 30, 25)
 
@@ -728,6 +728,11 @@ while running:
                         time_control_minutes = min(60, time_control_minutes + 1)
                     elif back_btn_rect.collidepoint(mx, my):
                         game_state = "title"
+                    else:
+                        for name, rect in difficulty_buttons.items():
+                            if rect.collidepoint(mx, my):
+                                AI_DIFFICULTY = name
+                                break
 
         if event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1 and game_state == "play":
@@ -845,7 +850,7 @@ while running:
 
         mins_text = ui_font.render(f'{time_control_minutes}Min', True, (255, 255, 255))
         mines_shadow_text = ui_font.render(f'{time_control_minutes}Min', True, (10, 10, 10))
-        mins_rect = mins_text.get_rect(center = (virtual_w // 2, 165))
+        mins_rect = mins_text.get_rect(center = (virtual_w // 2, 140))
         canvas.blit(mines_shadow_text, mins_rect.move(3, 3))
         canvas.blit(mins_text, mins_rect)
 
@@ -855,6 +860,30 @@ while running:
 
         canvas.blit(left_arrow_text, left_arrow_text.get_rect(center = left_arrow_rect.center))
         canvas.blit(right_arrow_text, right_arrow_text.get_rect(center = right_arrow_rect.center))
+
+        difficulty_title = ui_font.render("DIFFICULTY", True, (255, 255, 255))
+        difficulty_title_shadow = ui_font.render("DIFFICULTY", True, (10, 10, 10))
+        difficulty_rect = difficulty_title.get_rect(center = (virtual_w // 2, 190))
+        canvas.blit(difficulty_title_shadow, difficulty_rect.move(3, 3))
+        canvas.blit(difficulty_title, difficulty_rect)
+
+        for name, rect in difficulty_buttons.items():
+            selected = name == AI_DIFFICULTY
+            hovered = rect.collidepoint(mx, my)
+
+            if selected:
+                colour = (120, 100, 55)
+            elif hovered:
+                colour = (80, 100, 135)
+            else:
+                colour = (42, 42, 58)
+
+            pygame.draw.rect(canvas, colour, rect, 0, border_radius=4)
+
+            pygame.draw.rect(canvas, (238, 220, 130) if selected else (190, 180, 200), rect, 2, border_radius=4)
+            label = ui_font.render(name, True, (255, 255, 255))
+            canvas.blit(label, label.get_rect(center = rect.center))
+
         canvas.blit(back_btn_shadow_text, back_btn_rect.move(3,3))
         canvas.blit(back_btn_text, back_btn_text.get_rect(center = back_btn_rect.center))
        
