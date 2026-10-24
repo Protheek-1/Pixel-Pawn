@@ -496,7 +496,14 @@ def apply_search_move(start, end):
         )
     globals()['last_move_made'] = (start, end, piece)
 
-def minimax(depth, alpha, beta, colour):
+def minimax(depth, alpha, beta, colour, position_hisotry = None):
+    if position_hisotry is None:
+        position_hisotry = []
+    position_key = get_position_key(colour)
+    if position_key in position_hisotry:
+        return 0, None
+    position_history = position_hisotry + [position_key]
+
     if depth == 0:
         return evaluate_position(), None
     moves = generate_ai_moves(colour)
@@ -537,11 +544,50 @@ def minimax(depth, alpha, beta, colour):
                 break
         return best_score, best_move
 
+def get_game_position_key():
+    board_key = tuple(tuple(row) for row in board_layout)
+    castling_rights = (
+        has_moved_wK,
+        has_moved_bK,
+        has_moved_wR_left,
+        has_moved_wR_right,
+        has_moved_bR_left,
+        has_moved_bR_right,
+    )
+    ep_target = None
+    if last_move_made is not None:
+        start, end, piece = last_move_made
+        if piece in ('wP', 'bP') and abs(start[0] - end[0]) == 2:
+            end_row, end_col = end
+            capturing_pawn = 'wP' if piece.startswith('w') else 'bP'
+            for col in (end_col - 1, end_col + 1):
+                if (
+                    0 <= col < 8
+                    and board_layout[end_row][col] == capturing_pawn
+                ):
+                    ep_target = ((start[0] + end_row) // 2, end_col)
+                    break
+    return board_key, castling_rights, ep_target, turn
+
+def record_position():
+    key = get_game_position_key()
+    position_history[key] = position_history.get(key, 0) + 1
+    return position_history[key] >= 3
+
+position_history = {}
+record_position()
+
 def find_best_move(colour='black', depth=None):
     if depth is None:
         depth = AI_DIFFICULTIES[AI_DIFFICULTY]
     _, best_move = minimax(depth, float('-inf'), float('inf'), colour)
     return best_move
+
+def get_position_key(colour):
+    return (
+        tuple(tuple(row) for row in board_layout),
+        colour
+    )
 
 def make_iso_text(text_string, font, text_colour, shear_y = 0.5):
 
@@ -678,6 +724,9 @@ while running:
                                         game_over = True
                                     else:
                                         game_message = ""
+                                if not game_over and record_position():
+                                    game_message = "Draw by Repetition!"
+                                    game_over = True
                                 break
                         continue
                     
@@ -791,7 +840,7 @@ while running:
                             if selected_tile != hovered_tile and pending_promotion is None:
 
                                 player_move_time = time.time() - player_move_start
-                                bot_wait_time = player_move_time * random.uniform(0.7, 1.2)
+                                bot_wait_time = player_move_time * random.uniform(0.1, 0.2) # testing, change back later
                                 bot_think_start = time.time()
 
                                 turn = opposite_colour(turn)
@@ -810,6 +859,9 @@ while running:
                                         game_over = True
                                     else:
                                         game_message = ""
+                                if not game_over and record_position():
+                                    game_message = "Draw by Repetition!"
+                                    game_over = True
                         else:
                             board_layout[selected_tile[0]][selected_tile[1]] = dragging_piece
                     else:
