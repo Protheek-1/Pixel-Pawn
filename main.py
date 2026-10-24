@@ -4,6 +4,9 @@ import random
 import math
 import time
 
+class SearchTimeOut(Exception):
+    pass
+
 pygame.init()
 
 window_w = 1440
@@ -173,6 +176,23 @@ def grid_to_iso(row, col): # turns the grid back into iso cords
     iso_y = start_y + (rot_row + rot_col) * (tile_h // 2)
 
     return iso_x, iso_y + 16
+
+def make_iso_text(text_string, font, text_colour, shear_y = 0.5):
+
+    flat_timer_text = font.render(text_string, True, text_colour)
+    width, height = flat_timer_text.get_size()
+    slant_stretch = int(abs(shear_y) * width)
+    new_height = height + slant_stretch + 12
+    iso_surface = pygame.Surface((width, new_height), pygame.SRCALPHA)
+
+    for x in range(width):
+        offset_y = int(shear_y * (x))
+        if shear_y < 0:
+            offset_y += slant_stretch
+  
+        iso_surface.blit(flat_timer_text, (x, offset_y + 6), (x, 0, 1, height))
+
+    return iso_surface
 
 # move limitations for pieces
 def is_piece_move_valid(start_pos, end_pos):
@@ -502,13 +522,15 @@ def apply_search_move(start, end):
         )
     globals()['last_move_made'] = (start, end, piece)
 
-def minimax(depth, alpha, beta, colour, position_hisotry = None):
-    if position_hisotry is None:
-        position_hisotry = []
+def minimax(depth, alpha, beta, colour, position_history = None, deadline = None):
+    if deadline is not None and time.monotonic() >= deadline:
+        raise SearchTimeOut()
+    if position_history is None:
+        position_history = []
     position_key = get_position_key(colour)
-    if position_key in position_hisotry:
+    if position_key in position_history:
         return 0, None
-    position_history = position_hisotry + [position_key]
+    position_history = position_history + [position_key]
 
     if depth == 0:
         return evaluate_position(), None
@@ -525,9 +547,11 @@ def minimax(depth, alpha, beta, colour, position_hisotry = None):
         best_score = float('-inf')
         for start, end in moves:
             state = save_search_state()
-            apply_search_move(start, end)
-            score, _ = minimax(depth - 1, alpha, beta, 'white')
-            restore_search_state(state)
+            try:
+                apply_search_move(start, end)
+                score, _ = minimax(depth - 1, alpha, beta, 'white', position_history, deadline)
+            finally:
+                restore_search_state(state)
             if score > best_score:
                 best_score = score
                 best_move = (start, end)
@@ -539,9 +563,11 @@ def minimax(depth, alpha, beta, colour, position_hisotry = None):
         best_score = float('inf')
         for start, end in moves:
             state = save_search_state()
-            apply_search_move(start, end)
-            score, _ = minimax(depth - 1, alpha, beta, 'black')
-            restore_search_state(state)
+            try:
+                apply_search_move(start, end)
+                score, _ = minimax(depth - 1, alpha, beta, 'black', position_history, deadline)
+            finally:
+                restore_search_state(state)
             if score < best_score:
                 best_score = score
                 best_move = (start, end)
@@ -584,9 +610,31 @@ position_history = {}
 record_position()
 
 def find_best_move(colour='black', depth=None):
-    if depth is None:
-        depth = AI_DIFFICULTIES[AI_DIFFICULTY]
-    _, best_move = minimax(depth, float('-inf'), float('inf'), colour)
+    if AI_DIFFICULTY != "HARD":
+        if depth is None:
+            depth = AI_DIFFICULTIES[AI_DIFFICULTY]
+        _, best_move = minimax(depth, float('-inf'), float('inf'), colour)
+        return best_move
+
+    deadline = time.monotonic() + 4 # time budget/ difficulty
+    moves = generate_ai_moves(colour)
+
+    if not moves:
+        return None
+    best_move = moves[0]
+    for depth in range(1, 100):
+        try:
+            _, move = minimax(
+                depth,
+                float('-inf'), float('inf'),
+                colour,
+                deadline = deadline,
+            )
+            if move is not None:
+                best_move = move
+                print(f"Found move at depth {depth}")
+        except SearchTimeOut:
+            break
     return best_move
 
 def get_position_key(colour):
@@ -595,22 +643,6 @@ def get_position_key(colour):
         colour
     )
 
-def make_iso_text(text_string, font, text_colour, shear_y = 0.5):
-
-    flat_timer_text = font.render(text_string, True, text_colour)
-    width, height = flat_timer_text.get_size()
-    slant_stretch = int(abs(shear_y) * width)
-    new_height = height + slant_stretch + 12
-    iso_surface = pygame.Surface((width, new_height), pygame.SRCALPHA)
-
-    for x in range(width):
-        offset_y = int(shear_y * (x))
-        if shear_y < 0:
-            offset_y += slant_stretch
-  
-        iso_surface.blit(flat_timer_text, (x, offset_y + 6), (x, 0, 1, height))
-
-    return iso_surface
 
 # main loop
 while running:
@@ -659,7 +691,12 @@ while running:
 
         if turn == "black" and bot_think_start is not None:
             if time.time() - bot_think_start >= bot_wait_time:
+                ai_start_time = time.time()
                 ai_move = find_best_move('black')
+                ai_think_time = time.time() - ai_start_time
+                if AI_DIFFICULTY == "HARD":
+                    black_time = max(0, black_time - ai_think_time)
+                last_time = pygame.time.get_ticks()
                 if ai_move is not None:
                     start_pos, end_pos = ai_move
                     apply_search_move(start_pos, end_pos)
@@ -846,7 +883,10 @@ while running:
                             if selected_tile != hovered_tile and pending_promotion is None:
 
                                 player_move_time = time.time() - player_move_start
-                                bot_wait_time = player_move_time * random.uniform(0.7, 1.2) # testing, change back later
+                                if AI_DIFFICULTY == "HARD":
+                                    bot_wait_time = 0
+                                else:
+                                    bot_wait_time = player_move_time * random.uniform(0.7, 1.2)
                                 bot_think_start = time.time()
 
                                 turn = opposite_colour(turn)
