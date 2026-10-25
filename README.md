@@ -1,5 +1,74 @@
-# Pixel-Pawn
-A isometric hand drawn pixel art style chess game, with a timer, move take back and a simple ai (i have no clue how to do this)
-my method so far is draw everything in aseprite then upload to vscode, attack grids to map pieces onto them, i want the game to have a kinda retro vibe to it
-hope you have fun
-ps don't click setup yet, i'm still working on it
+# Pixel Pawn
+
+<img width="1805" height="1059" alt="Screenshot 2026-10-24 155727" src="https://github.com/user-attachments/assets/a02048c6-d615-4bbd-bd0f-09a957bf3363" />
+
+A retro-styled, isometric, hand-drawn pixel art chess game built in Python with Pygame.
+
+This project blends classic chess gameplay with a warm, nostalgic arcade aesthetic inspired by old-school pixel games. The board is presented in an isometric layout, pieces are drawn in a hand-crafted style, and the experience includes a timer, move take-back, and a simple AI opponent.
+
+## Features
+
+- Isometric chess board with a hand-drawn pixel art look
+- Chess timer for both sides
+- Move logging (not in game, in code)
+- AI difficulty settings
+- Retro UI with custom graphics and a low-fi, arcade feel
+- Playable
+
+## Gameplay
+
+- Select a piece by clicking it
+- Drag and drop to move it
+- Use the in-game menu for draw/home actions
+- Watch the timer and manage your turns carefully
+- Try the AI modes and experiment with different difficulties
+
+## Controls
+
+- Left click: select and move pieces
+- Mouse drag: reposition a selected piece
+- In-game menu: pause, offer a draw, or return home
+
+## Running the game
+just use the github page linked in the demo orrrr:
+
+Requirements:
+
+- Python 3
+- Pygame
+
+Install dependencies:
+
+```bash
+pip install pygame
+```
+
+Run the game:
+
+```bash
+python main.py
+```
+
+## Project notes
+
+This project is still in active development. The gameplay loop, UI, and AI are being iterated on, and the setup screen/demo flow is not fully finished yet.
+
+The repo also includes browser/demo packaging assets, but the main project is still centered around the Pygame prototype in `main.py`.
+
+## Project structure
+
+```text
+.
+├── main.py                 # Main game logic and rendering
+├── index.html              # Browser/demo bootstrap
+├── graphics/               # Sprites, board art, UI assets
+├── fonts/                  # Pixel fonts
+├── build/                  # Build-related files
+├── favicon.png             # App icon
+├── README.md               # Project overview
+└── pixel-pawn-demoitch/    # Demo packaging assets
+```
+
+## A note from the creator
+
+have fun this took a while, also hard difficulty freeezes for a bit, thats intended
