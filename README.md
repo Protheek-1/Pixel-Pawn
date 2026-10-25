@@ -8,10 +8,10 @@ This project blends classic chess gameplay with a warm, nostalgic arcade aesthet
 
 - Isometric chess board with a hand-drawn pixel art look
 - Chess timer for both sides
-- Move take-back support
+- Move logging (not in game, in code)
 - AI difficulty settings
 - Retro UI with custom graphics and a low-fi, arcade feel
-- Playable prototype built for local desktop play
+- Playable
 
 ## Gameplay
 
@@ -28,6 +28,7 @@ This project blends classic chess gameplay with a warm, nostalgic arcade aesthet
 - In-game menu: pause, offer a draw, or return home
 
 ## Running the game
+just use the github page linked in the demo orrrr:
 
 Requirements:
 
@@ -68,8 +69,4 @@ The repo also includes browser/demo packaging assets, but the main project is st
 
 ## A note from the creator
 
-"ps don't click setup yet, i'm still working on it"
-
-This project is a work in progress, but the goal is to make a fun, retro-feeling chess experience with lots of personality.
-
-Thanks for checking it out — hope you have fun.
+have fun this took a while, also hard difficulty freeezes for a bit, thats intended
