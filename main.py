@@ -8,7 +8,12 @@ import asyncio
 class SearchTimeOut(Exception):
     pass
 
-pygame.init()
+pygame.display.init()
+pygame.font.init()
+try:
+    pygame.mixer.init()
+except Exception:
+    pass
 
 window_w = 1440
 window_h = 810
@@ -647,6 +652,7 @@ def get_position_key(colour):
 
 # main loop
 async def main():
+    print("GAME STARTED")
     global AI_DIFFICULTY, back_btn_text, black_time, bot_think_start, bot_wait_time
     global check_flash_colour, check_flash_start, dragging_piece, draw_offer, game_message
     global game_over, game_state, has_moved_bK, has_moved_bR_left, has_moved_bR_right
@@ -656,6 +662,7 @@ async def main():
     global running
     
     while running:
+        print("GAME LOOP STARTED")
         # get mouse position cause were doing the virtual canvas thing and mouse pos is messed up
         raw_mx, raw_my = pygame.mouse.get_pos()
         mx = int(raw_mx * (virtual_w / window_w))
@@ -1191,6 +1198,11 @@ async def main():
         clock.tick(120)
         await asyncio.sleep(0)
 
-asyncio.run(main())
-pygame.quit()
+async def run_game():
+    try:
+        await main()
+    finally:
+        pygame.quit()
+
+asyncio.ensure_future(run_game())
 
