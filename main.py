@@ -1,5 +1,5 @@
 import pygame
-import sys # not needed rn but maybe at some point
+import sys 
 import random
 import time
 import asyncio
@@ -8,6 +8,7 @@ import asyncio
 class SearchTimeOut(Exception):
     pass
 
+# pygame initalization in 2 stages cause i dont have audio rn
 pygame.display.init()
 pygame.font.init()
 try:
@@ -348,6 +349,17 @@ def is_square_attacked(pos, by_colour):
                 return True
     return False
 
+def count_attackers(pos, colour):
+    prefix = 'w' if colour == 'white' else 'b'
+    count = 0
+    for row in range(8):
+        for col in range(8):
+            piece = board_layout[row][col]
+            if piece.startswith(prefix):
+                if piece_attacks_square((row, col), pos):
+                    count += 1
+    return count
+
 def is_in_check(colour):
     king = 'wK' if colour == 'white' else 'bK'
     
@@ -458,17 +470,37 @@ def evaluate_position():
 
             if piece_type == 'P':
                 advancement = (row - 1) if colour == 'b' else (6 - row)
-                score += sign * advancement * 8
+                score += sign * advancement * 10
 
             if piece_type in ('N', 'B'):
                 starting_row = 0 if colour == 'b' else 7
                 if row != starting_row:
-                    score += sign * 20
+                    score += sign * 14
 
             if piece_type == 'K':
                 home_row = 0 if colour == 'b' else 7
                 if row == home_row and col in (2, 6):
-                    score += sign * 40
+                    score += sign * 25
+
+            # defence bonuses so it actually defends piece rather than running away
+            pos = (row, col)
+            colour_name = 'white' if colour == 'w' else 'black'
+            enemy_colour = 'black' if colour == 'w' else 'white'
+
+            defenders = count_attackers(pos, colour_name)
+            attackers = count_attackers(pos, enemy_colour)
+
+            value = values[piece_type]
+            defence_bonus = int(value * 0.04)
+            attacked_defended_bonus = int(value * 0.07)
+            undefended_penalty = int(value * 0.11)
+
+            if defenders > 0:
+                score += sign * defence_bonus
+            if attackers > 0 and defenders > 0:
+                score += sign * attacked_defended_bonus
+            if attackers > 0 and defenders == 0:
+                score -= sign * undefended_penalty
 
     return score
 
@@ -664,7 +696,7 @@ def get_position_key(colour):
 
 # main loop
 async def main():
-    print("GAME STARTED") # testing
+   
     # need to do this for pygbag
     global AI_DIFFICULTY, back_btn_text, black_time, bot_think_start, bot_wait_time
     global check_flash_colour, check_flash_start, dragging_piece, draw_offer, game_message
@@ -675,7 +707,7 @@ async def main():
     global running
     
     while running:
-        print("GAME LOOP STARTED")
+   
         # get mouse position cause were doing the virtual canvas thing and mouse pos is messed up
         raw_mx, raw_my = pygame.mouse.get_pos()
         mx = int(raw_mx * (virtual_w / window_w))
