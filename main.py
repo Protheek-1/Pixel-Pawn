@@ -96,6 +96,7 @@ title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 80)
 shadow_text = title_font.render("Pixel Pawn", True, (10, 10, 10))
 title_text = title_font.render("Pixel Pawn", True, (255, 255, 255))
 title_rect = title_text.get_rect(center = (virtual_w // 2, 140))
+title_bg = pygame.image.load("graphics/title_bg.png")
 
 ui_font = pygame.font.Font("fonts/ThaleahFat.ttf", 32)
 
@@ -764,7 +765,7 @@ async def main():
     global menu_open, menu_slide_x, pending_promotion, player_move_start, possible_moves
     global selected_tile, time_control_minutes, turn, white_time
     global running
-    global title_rect
+    global title_rect, title_bg
     
     while running:
    
@@ -1090,7 +1091,7 @@ async def main():
                         dragging_piece = None
                         selected_tile = None
             
-        canvas.blit(pygame.image.load("graphics/title_bg.png"), (0,0)) # makes it appear for both title and setup screen
+        canvas.blit(title_bg, (0,0)) # makes it appear for both title and setup screen
 
         if game_state == "title": # finally done
         
