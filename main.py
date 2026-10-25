@@ -49,6 +49,14 @@ has_moved_wR_left = False
 has_moved_wR_right = False
 has_moved_bR_left = False
 has_moved_bR_right = False
+has_moved_wN_left = False
+has_moved_wN_right = False
+has_moved_wB_left = False
+has_moved_wB_right = False
+has_moved_bN_left = False
+has_moved_bN_right = False
+has_moved_bB_left = False
+has_moved_bB_right = False
 pending_promotion = None
 promotion_choices = ['Q', 'R', 'B', 'N']
 promotion_rects = [pygame.Rect(228 + i * 46, 155, 40, 40) for i in range(4)]
@@ -438,6 +446,14 @@ AI_STATE_NAMES = [
     "has_moved_wR_right",
     "has_moved_bR_left",
     "has_moved_bR_right",
+    "has_moved_wN_left",
+    "has_moved_wN_right",
+    "has_moved_wB_left",
+    "has_moved_wB_right",
+    "has_moved_bN_left",
+    "has_moved_bN_right",
+    "has_moved_bB_left",
+    "has_moved_bB_right",
 ]
 
 def save_search_state():
@@ -466,16 +482,38 @@ def evaluate_position():
             score += sign * values[piece_type]
             centre_distance = abs(3.5 - col) + abs(3.5 - row)
             if piece_type in ('P', 'N', 'B', 'Q'):
-                score += sign * int((7 - centre_distance)*(3 if piece_type == 'P' else 2))
+                score += sign * int((7 - centre_distance)*(4 if piece_type == 'P' else 2))
 
             if piece_type == 'P':
                 advancement = (row - 1) if colour == 'b' else (6 - row)
                 score += sign * advancement * 10
 
             if piece_type in ('N', 'B'):
-                starting_row = 0 if colour == 'b' else 7
-                if row != starting_row:
-                    score += sign * 14
+                developed = False
+                if colour == 'w':
+                    if piece_type == 'N':
+                        developed = (
+                            (col == 1 and has_moved_wN_left) or
+                            (col == 6 and has_moved_wN_right)
+                        )
+                    else:
+                        developed = (
+                            (col == 2 and has_moved_wB_left) or
+                            (col == 5 and has_moved_wB_right)
+                        )
+                else:
+                    if piece_type == 'N':
+                        developed = (
+                            (col == 1 and has_moved_bN_left) or
+                            (col == 6 and has_moved_bN_right)
+                        )
+                    else:
+                        developed = (
+                            (col == 2 and has_moved_bB_left) or
+                            (col == 5 and has_moved_bB_right)
+                        )
+                if developed:
+                    score += sign * 27
 
             if piece_type == 'K':
                 home_row = 0 if colour == 'b' else 7
@@ -565,7 +603,23 @@ def apply_search_move(start, end):
             globals()['has_moved_bR_left'] = True
         elif s_col == 7:
             globals()['has_moved_bR_right'] = True
-    captured = None
+    elif piece == 'wN' and start == (7, 1):
+        globals()['has_moved_wN_left'] = True
+    elif piece == 'wN' and start == (7, 6):
+        globals()['has_moved_wN_right'] = True
+    elif piece == 'bN' and start == (0, 1):
+        globals()['has_moved_bN_left'] = True
+    elif piece == 'bN' and start == (0, 6):
+        globals()['has_moved_bN_right'] = True
+    elif piece == 'wB' and start == (7, 2):
+        globals()['has_moved_wB_left'] = True
+    elif piece == 'wB' and start == (7, 5):
+        globals()['has_moved_wB_right'] = True
+    elif piece == 'bB' and start == (0, 2):
+        globals()['has_moved_bB_left'] = True
+    elif piece == 'bB' and start == (0, 5):
+        globals()['has_moved_bB_right'] = True
+
     if piece[1] == 'P' and e_row in (0, 7):
         board_layout[e_row][e_col] = (
             'wQ' if piece.startswith('w') else 'bQ'
