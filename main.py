@@ -84,7 +84,12 @@ difficulty_buttons = {
 check_flash_start = None
 check_flash_colour = None
 CHECK_FLASH_DURATION = 500
-
+end_title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 54)
+end_subtitle_font = pygame.font.Font("fonts/ThaleahFat.ttf", 25)
+end_button_font = pygame.font.Font("fonts/ThaleahFat.ttf", 22)
+play_again_rect = pygame.Rect(170, 235, 135, 38)
+end_menu_rect = pygame.Rect(325, 235, 135, 38)
+game_over_start = None
 
 # text stuff
 title_font = pygame.font.Font("fonts/ThaleahFat.ttf", 80)
@@ -759,6 +764,7 @@ async def main():
     global menu_open, menu_slide_x, pending_promotion, player_move_start, possible_moves
     global selected_tile, time_control_minutes, turn, white_time
     global running
+    global title_rect
     
     while running:
    
@@ -771,6 +777,7 @@ async def main():
 
         start_hover = start_rect.collidepoint(mx, my)
         setup_hover = setup_rect.collidepoint(mx, my)
+       
 
         if game_state == "play" and not menu_open and not game_over:
             current_time = pygame.time.get_ticks()
@@ -837,6 +844,49 @@ async def main():
             if event.type == pygame.MOUSEBUTTONDOWN: # converts piece to hover state
                 if event.button == 1:
 
+                    if game_state == "play" and game_over:
+                        if play_again_rect.collidepoint(mx, my):
+                            board_layout[:] = [
+                                ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
+                                ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
+                                ['--', '--', '--', '--', '--', '--', '--', '--'],
+                                ['--', '--', '--', '--', '--', '--', '--', '--'],
+                                ['--', '--', '--', '--', '--', '--', '--', '--'],
+                                ['--', '--', '--', '--', '--', '--', '--', '--'],
+                                ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
+                                ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
+                            ]
+                            white_time = time_control_minutes * 60
+                            black_time = time_control_minutes * 60
+                            turn = "white"
+                            game_message = ""
+                            game_over = False
+                            game_over_start = None
+                            selected_tile = None
+                            dragging_piece = None
+                            possible_moves = []
+                            pending_promotion = None
+                            menu_open = False
+                            position_history.clear()
+                            record_position()
+                            last_time = pygame.time.get_ticks()
+                            player_move_start = time.time()
+                            bot_think_start = None
+                            continue
+
+                        elif end_menu_rect.collidepoint(mx, my):
+                            game_state = "title"
+                            game_message = ""
+                            game_over = False
+                            game_over_start = None
+                            selected_tile = None
+                            dragging_piece = None
+                            possible_moves = []
+                            menu_open = False
+                            continue
+
+                        continue
+
                     if game_state == "play" and draw_offer is not None:
                         if accept_draw_rect.collidepoint(mx, my):
                             game_message = "Draw Agreed"
@@ -872,7 +922,7 @@ async def main():
                                     if is_in_check(turn):
                                         if not has_legal_moves(turn):
                                             winner = opposite_colour(turn).upper()
-                                            game_message = f"Checkmate!{winner} wins"
+                                            game_message = f"Checkmate! {winner} wins"
                                             game_over = True
                                         else:
                                             game_message = f""
@@ -1009,7 +1059,7 @@ async def main():
                                     if is_in_check(turn):
                                         if not has_legal_moves(turn):
                                             winner = opposite_colour(turn).upper()
-                                            game_message = f"Checkmate!{winner} wins"
+                                            game_message = f"Checkmate! {winner} wins"
                                             game_over = True
                                         else:
                                             game_message = f""
@@ -1255,11 +1305,60 @@ async def main():
                     sprite_rect = sprite.get_rect(center = rect.center).move(0, -8)
                     canvas.blit(sprite, sprite_rect)
 
-            if game_message:
-                message_colour = ((255, 100, 100) if 'Check' in game_message or 'Wins' in game_message else (238, 220, 130))
-
+            if game_message and not game_over:
+                message_colour = ((255, 130, 100) if 'Check' in game_message or 'Wins' in game_message else (238, 220, 130))
                 message_surf = ui_font.render(game_message, True, message_colour)
                 canvas.blit(message_surf, (12,12))
+
+            if game_over and game_state == "play":
+                overlay = pygame.Surface(
+                    (virtual_w, virtual_h), pygame.SRCALPHA
+                )
+                overlay.fill((8, 8, 8, 185))
+                canvas.blit(overlay, (0, 0))
+                panel_rect = pygame.Rect(105, 70, 430, 220)
+                pygame.draw.rect(canvas, (18, 20, 34), panel_rect, 0, 8)
+                pygame.draw.rect(canvas, (238, 220, 130), panel_rect, 3, 8)
+                if "Checkmate" in game_message:
+                    title = "CHECKMATE"
+                    subtitle = game_message.replace("Checkmate!", "").strip()
+                    title_colour = (255, 210, 100)
+                elif "Stalemate" in game_message:
+                    title = "STALEMATE"
+                    subtitle = "It's a draw!"
+                    title_colour = (190, 200, 230)
+                else:
+                    title = "GAME OVER"
+                    subtitle = game_message
+                    title_colour = (255, 210, 100)
+
+                end_title_surf = end_title_font.render(
+                    title, True, title_colour
+                )
+                end_title_rect = end_title_surf.get_rect(
+                    center=(virtual_w // 2, 112)
+                )
+                canvas.blit(end_title_surf, end_title_rect)
+
+                subtitle_surf = end_subtitle_font.render(
+                    subtitle, True, (245, 245, 250)
+                )
+                subtitle_rect = subtitle_surf.get_rect(
+                    center=(virtual_w // 2, 166)
+                )
+                canvas.blit(subtitle_surf, subtitle_rect)
+
+                for rect, label in [
+                    (play_again_rect, "PLAY AGAIN"),
+                    (end_menu_rect, "MAIN MENU"),
+                ]:
+                    hovered = rect.collidepoint(mx, my)
+                    fill = (88, 75, 45) if hovered else (38, 43, 62)
+                    border = (255, 255, 145) if hovered else (150, 155, 180)
+                    pygame.draw.rect(canvas, fill, rect, 0, 4)
+                    pygame.draw.rect(canvas, border, rect, 2, 4)
+                    label_surf = end_button_font.render(label, True, (255, 255, 255))
+                    canvas.blit(label_surf, label_surf.get_rect(center=rect.center))
 
             menu_hover = menu_rect.collidepoint(mx, my)
             line_colour = (238, 220, 130) if menu_hover else (200, 190, 210)
