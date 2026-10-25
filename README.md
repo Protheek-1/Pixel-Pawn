@@ -1,5 +1,7 @@
 # Pixel Pawn
 
+<img width="1805" height="1059" alt="Screenshot 2026-10-24 155727" src="https://github.com/user-attachments/assets/a02048c6-d615-4bbd-bd0f-09a957bf3363" />
+
 A retro-styled, isometric, hand-drawn pixel art chess game built in Python with Pygame.
 
 This project blends classic chess gameplay with a warm, nostalgic arcade aesthetic inspired by old-school pixel games. The board is presented in an isometric layout, pieces are drawn in a hand-crafted style, and the experience includes a timer, move take-back, and a simple AI opponent.
