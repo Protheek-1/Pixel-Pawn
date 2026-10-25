@@ -1,10 +1,10 @@
 import pygame
 import sys # not needed rn but maybe at some point
 import random
-import math
 import time
 import asyncio
 
+# custom exception for when the AI takes too long to find a move
 class SearchTimeOut(Exception):
     pass
 
@@ -26,8 +26,9 @@ clock = pygame.time.Clock()
 pygame.display.set_caption("Pixel Pawn: DELUXE EDITION")
 pygame.mouse.set_visible(False) # so that i can make a custom cursor
 
-game_state  = "title" # global variables
+# global variables
 running = True
+game_state  = "title" 
 time_control_minutes = 10
 white_time = time_control_minutes * 60
 black_time = time_control_minutes * 60
@@ -147,6 +148,16 @@ for index, piece in enumerate(sheet_order):
     pieces_sprite[piece] = pygame.transform.scale_by(sub_surf, 2)
 
 bg = pygame.image.load('graphics/bg.png')
+
+
+"""""
+all of my functios
+these include the board mapping
+the piece moveset
+board evbaluation
+and the minimax search
+also smaller isometric functions
+"""""
 
 # mapping grid to the board and the back cause isometric is weird also hard  
 def iso_to_grid(mx, my):
@@ -397,6 +408,7 @@ def has_legal_moves(colour):
                         return True
     return False
 
+#blow are functions for the minimax
 AI_PIECE_VALUES = {
     'P': 100,
     'N': 320,
@@ -652,7 +664,8 @@ def get_position_key(colour):
 
 # main loop
 async def main():
-    print("GAME STARTED")
+    print("GAME STARTED") # testing
+    # need to do this for pygbag
     global AI_DIFFICULTY, back_btn_text, black_time, bot_think_start, bot_wait_time
     global check_flash_colour, check_flash_start, dragging_piece, draw_offer, game_message
     global game_over, game_state, has_moved_bK, has_moved_bR_left, has_moved_bR_right
@@ -704,7 +717,6 @@ async def main():
             and not menu_open
             and pending_promotion is None
         ):
-            
 
             if turn == "black" and bot_think_start is not None:
                 if time.time() - bot_think_start >= bot_wait_time:
@@ -736,7 +748,7 @@ async def main():
             if event.type == pygame.QUIT:
                 running = False
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == pygame.MOUSEBUTTONDOWN: # converts piece to hover state
                 if event.button == 1:
 
                     if game_state == "play" and draw_offer is not None:
@@ -843,7 +855,7 @@ async def main():
                                     AI_DIFFICULTY = name
                                     break
 
-            if event.type == pygame.MOUSEBUTTONUP:
+            if event.type == pygame.MOUSEBUTTONUP: # final piece check once player places piece
                 if event.button == 1 and game_state == "play" and turn == 'white':
                     if dragging_piece is not None:
                         if hovered_tile is not None:
@@ -942,9 +954,9 @@ async def main():
                         dragging_piece = None
                         selected_tile = None
             
-        canvas.blit(pygame.image.load("graphics/title_bg.png"), (0,0))
+        canvas.blit(pygame.image.load("graphics/title_bg.png"), (0,0)) # makes it appear for both title and setup screen
 
-        if game_state == "title": # basically done
+        if game_state == "title": # finally done
         
             canvas.blit(shadow_text, title_rect.move(4, 4))
             canvas.blit(title_text, title_rect)
@@ -966,7 +978,7 @@ async def main():
                 box_rect = setup_rect.inflate(10, 6)
                 canvas.blit(setup_text, setup_rect)
 
-        if game_state == "setup": # TODO: Add setup screen
+        if game_state == "setup": # adds setup screen
             setup_title = title_font.render("TIME CONTROL", True, (255, 255, 255))
             setup_title_shadow = title_font.render("TIME CONTROL", True, (10, 10, 10))
             setup_title_rect = setup_title.get_rect(center = (virtual_w // 2 + 10, 70))
@@ -1025,6 +1037,7 @@ async def main():
 
             canvas.blit(inkwell_surf, inkwell_rect)
 
+            # clock draw code, shows each player's time on their turn, also uses the make text iso fuction
             if turn == 'white':
                 active_time = white_time    
             else:
@@ -1047,6 +1060,7 @@ async def main():
             clock_screen_centre = (timer_rect.x + 60, timer_rect.y + 76)
             canvas.blit(smooth_timer_text, smooth_timer_text.get_rect(left = clock_screen_centre[0] - 36, top = clock_screen_centre[1] - 32))
 
+            # this is the glowing hover and select effect
             if hovered_tile is not None:
                 hover_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
                 pygame.draw.polygon(hover_surf, (255, 235, 150, 80), [(32, 0), (64, 16), (32, 32), (0, 16)])
@@ -1068,6 +1082,7 @@ async def main():
             mouse_grid = iso_to_grid(mx, my)
             mouse_row = mouse_grid[0] if mouse_grid is not None else -1
 
+            #drawing of all pieces on the board as well as check effect and shadows
             for move_row, move_col in possible_moves:
                         iso_x, iso_y = grid_to_iso(move_row, move_col)
                         canvas.blit(select_surf, (iso_x - 34, iso_y - 15))
@@ -1162,7 +1177,8 @@ async def main():
 
             menu_hover = menu_rect.collidepoint(mx, my)
             line_colour = (238, 220, 130) if menu_hover else (200, 190, 210)
-
+            
+            # ui menu drawing
             pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y - 3), (menu_rect.x + 25, menu_rect.y - 3), 2)
             pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y + 3), (menu_rect.x + 25, menu_rect.y + 3), 2)
             pygame.draw.line(canvas, line_colour, (menu_rect.x + 10, menu_rect.y + 9), (menu_rect.x + 25, menu_rect.y + 9), 2)
@@ -1198,6 +1214,7 @@ async def main():
         clock.tick(120)
         await asyncio.sleep(0)
 
+# async def to let the game run using pygbag on github pages
 async def run_game():
     try:
         await main()
