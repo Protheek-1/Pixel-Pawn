@@ -1204,5 +1204,11 @@ async def run_game():
     finally:
         pygame.quit()
 
-asyncio.ensure_future(run_game())
+if __name__ == "__main__":
+    import sys
+
+    if sys.platform == "emscripten":
+        asyncio.ensure_future(run_game())
+    else:
+        asyncio.run(run_game())
 
