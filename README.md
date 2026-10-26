@@ -32,26 +32,11 @@ This project blends classic chess gameplay with a warm, nostalgic arcade aesthet
 ## Running the game
 just use the github page linked in the demo orrrr:
 
-Requirements:
-
-- Python 3
-- Pygame
-
-Install dependencies:
-
-```bash
-pip install pygame
-```
-
-Run the game:
-
-```bash
-python main.py
-```
+download the exe from the github release v1.0 extract all and run the exe
 
 ## Project notes
 
-This project is still in active development. The gameplay loop, UI, and AI are being iterated on, and the setup screen/demo flow is not fully finished yet.
+The project is now fully complete
 
 The repo also includes browser/demo packaging assets, but the main project is still centered around the Pygame prototype in `main.py`.
 
